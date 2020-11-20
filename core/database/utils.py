@@ -1,5 +1,5 @@
 from discord.ext.commands import Context
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 from typing import Optional, Union
 
 from core.database.crud.servers import CRUDServer
@@ -18,14 +18,14 @@ from core.database.schemas.levels import CreateLevel
 from core.utils import level_exp
 
 
-async def get_create(
-        db: AsyncSession, crud, *, obj_in=Union[
+def get_create(
+        db: Session, crud, *, obj_in=Union[
             CreateServer, CreatePlayer, CreateMember, CreateLevel
         ]
 ):
     """
     Create object if it doesn't exist
-    :param db: Async database session
+    :param db: Database session
     :param crud: Crud-object to be used
     :param obj_in: creation object
     :return: Object
@@ -34,10 +34,10 @@ async def get_create(
     # Get/Create Level
     if isinstance(crud, CRUDLevel) and isinstance(obj_in, CreateLevel):
 
-        obj = await crud.get_by_value(db, obj_in.value)
+        obj = crud.get_by_value(db, obj_in.value)
 
         if obj_in.value > 1:
-            previous = await crud.get_by_value(db, obj_in.value - 1)
+            previous = crud.get_by_value(db, obj_in.value - 1)
         else:
             previous = obj
 
@@ -46,40 +46,40 @@ async def get_create(
             previous_obj = obj_in
             previous_obj.value -= 1
             previous_obj.exp = level_exp(previous_obj.value)
-            previous = await get_create(db, crud, obj_in=previous_obj)
+            previous = get_create(db, crud, obj_in=previous_obj)
 
         if obj is None:
-            obj = await crud_level.create(db, obj_in=obj_in)
+            obj = crud_level.create(db, obj_in=obj_in)
 
     # Get/Create Server
     elif isinstance(crud, CRUDServer) and isinstance(obj_in, CreateServer):
-        obj = await crud.get_by_discord(
+        obj = crud.get_by_discord(
             db, obj_in.discord_id
         )
 
         if obj is None:
-            obj = await crud_server.create(
+            obj = crud_server.create(
                 db, obj_in=obj_in
             )
 
     # Get/Create Player
     elif isinstance(crud, CRUDPlayer) and isinstance(obj_in, CreatePlayer):
-        obj = await crud.get_by_discord(
+        obj = crud.get_by_discord(
             db, obj_in.discord_id
         )
 
         if obj is None:
-            obj = await crud_player.create(
+            obj = crud_player.create(
                 db, obj_in=obj_in
             )
 
     # Get/Create Member
     elif isinstance(crud, CRUDMember) and isinstance(obj_in, CreateMember):
-        obj = await crud_member.get_by_ids(
+        obj = crud_member.get_by_ids(
             db, obj_in.player_uuid, obj_in.server_uuid
         )
         if obj is None:
-            obj = await crud_member.create(
+            obj = crud_member.create(
                 db, obj_in=obj_in
             )
     else:
@@ -88,13 +88,13 @@ async def get_create(
     return obj
 
 
-async def get_create_ctx(
-        ctx: Context, db: AsyncSession, crud, overrides: Optional[dict]={}
+def get_create_ctx(
+        ctx: Context, db: Session, crud, overrides: Optional[dict]={}
 ):
     """
     Create object if it doesn't exist with context
     :param ctx: Discord Context
-    :param db: Async database session
+    :param db: Database session
     :param crud: Crud-object to be used
     :param overrides: Override data
     :return: object
@@ -108,14 +108,14 @@ async def get_create_ctx(
         if overrides.get('level', 1) < 1:
             raise ValueError('Level must be 1 or greater!')
 
-        obj = await crud.get_by_value(db, overrides.get('level', 1))
+        obj = crud.get_by_value(db, overrides.get('level', 1))
 
         previous = None
 
         if overrides.get('level', 1) > 1:
             prev_overrides = overrides
             prev_overrides['levels'] -= 1
-            previous = await get_create_ctx(ctx, db, crud, prev_overrides)
+            previous = get_create_ctx(ctx, db, crud, prev_overrides)
 
         if obj is None and \
                 (previous is not None or overrides.get('level', 1) == 1):
@@ -124,10 +124,10 @@ async def get_create_ctx(
                 'exp': level_exp(overrides.get('level', 1)),
                 'value': overrides.get('level', 1)
             }
-            obj = await crud_level.create(db, obj_in=CreateLevel(**level_dict))
+            obj = crud_level.create(db, obj_in=CreateLevel(**level_dict))
 
     if isinstance(crud, CRUDServer) or isinstance(crud, CRUDMember):
-        obj = await crud.get_by_discord(
+        obj = crud.get_by_discord(
             db, ctx.guild.id
         )
 
@@ -138,14 +138,14 @@ async def get_create_ctx(
                 "server_exp": overrides.get('exp', 0),
                 "channel": overrides.get('channel_id')
             }
-            obj = await crud_server.create(
+            obj = crud_server.create(
                 db, obj_in=CreateServer(**server_dict)
             )
 
         server_uuid = obj.uuid
 
     if isinstance(crud, CRUDPlayer) or isinstance(crud, CRUDMember):
-        obj = await crud.get_by_discord(
+        obj = crud.get_by_discord(
             db, ctx.message.author.id
         )
 
@@ -155,14 +155,14 @@ async def get_create_ctx(
                 "name": ctx.message.author.name,
                 "hidden": overrides.get('hidden', False)
             }
-            obj = await crud_player.create(
+            obj = crud_player.create(
                 db, obj_in=CreatePlayer(**player_dict)
             )
 
         player_uuid = obj.uuid
 
     if isinstance(crud, CRUDMember):
-        obj = await crud_member.get_by_ids(
+        obj = crud_member.get_by_ids(
             db, player_uuid, server_uuid
         )
         if obj is None:
@@ -173,7 +173,7 @@ async def get_create_ctx(
                 "level_uuid": None,
 
             }
-            obj = await crud_member.create(
+            obj = crud_member.create(
                 db, obj_in=CreateMember(**member_dict)
             )
 

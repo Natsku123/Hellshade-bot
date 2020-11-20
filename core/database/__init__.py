@@ -1,12 +1,18 @@
+import asyncio
+
 from core.config import settings
-from sqlalchemy.orm import declarative_base
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy import create_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 
-DATABASE_URL = f"postgresql+asyncpg://{settings.DATABASE_USER}:" \
+DATABASE_URL = f"postgresql://{settings.DATABASE_USER}:" \
                f"{settings.DATABASE_PASSWORD}@{settings.DATABASE_SERVER}/" \
                f"{settings.DATABASE_NAME}"
 
-engine = create_async_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL)
+
+Session = sessionmaker(autoflush=False, bind=engine)
 
 Base = declarative_base()
+
+session_lock = asyncio.Lock()
