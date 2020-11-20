@@ -1,0 +1,8 @@
+discord.py
+requests
+bs4
+sqlalchemy>=1.4.0b1
+pydantic
+asyncpg
+alembic
+psycopg2-binary
