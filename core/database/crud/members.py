@@ -27,7 +27,7 @@ class CRUDMember(CRUDBase[Member, schemas.CreateMember, schemas.UpdateMember]):
             order_by(desc(Level.value), desc(self.model.exp)).\
             limit(value)
         result = db.execute(query)
-        return result.all()
+        return result.scalars().all()
 
     def get_by_ids(
             self, db: Session, player_uuid: UUID, server_uuid

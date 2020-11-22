@@ -117,7 +117,7 @@ class CRUDBase(Generic[ModelType, CreateType, UpdateType]):
         """
         query = select(self.model).where(self.model.uuid == uuid)
         result = db.execute(query)
-        obj = result.first()
+        obj = result.scalars().first()
 
         if obj is not None:
             del_query = delete(self.model).where(self.model.uuid == uuid)

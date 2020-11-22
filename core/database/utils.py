@@ -36,20 +36,8 @@ def get_create(
 
         obj = crud.get_by_value(db, obj_in.value)
 
-        if obj_in.value > 1:
-            previous = crud.get_by_value(db, obj_in.value - 1)
-        else:
-            previous = obj
-
-        # Generate previous levels
-        if obj_in.value > 1 and previous is None:
-            previous_obj = obj_in
-            previous_obj.value -= 1
-            previous_obj.exp = level_exp(previous_obj.value)
-            previous = get_create(db, crud, obj_in=previous_obj)
-
         if obj is None:
-            obj = crud_level.create(db, obj_in=obj_in)
+            obj = crud_level.generate_many(db, obj_in.value)[-1]
 
     # Get/Create Server
     elif isinstance(crud, CRUDServer) and isinstance(obj_in, CreateServer):

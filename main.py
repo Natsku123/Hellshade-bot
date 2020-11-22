@@ -58,7 +58,7 @@ def main():
         owner_id=settings.BOT_OWNER
     )
 
-    bot.add_cog(Utility(bot, settings.ADMINS))
+    bot.add_cog(Utility(bot, settings.ADMINS, logger))
     bot.add_cog(Games(bot, logger))
 
     exp_lock = asyncio.Lock()

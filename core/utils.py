@@ -52,10 +52,11 @@ def process_exp(current_level: int, exp: int) -> Tuple[int, int]:
     :param exp: Current experience
     :return: new current level, new current experience
     """
-    next_level_exp = level_exp(current_level+1)
+    next_level_exp = level_exp(current_level + 1)
 
-    if next_level_exp <= exp:
+    while next_level_exp <= exp:
         exp -= next_level_exp
         current_level += 1
-        return process_exp(current_level, exp)
+        next_level_exp = level_exp(current_level + 1)
+
     return current_level, exp

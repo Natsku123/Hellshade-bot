@@ -17,9 +17,37 @@ from core.utils import progress_bar, level_exp, process_exp
 
 
 class Utility(commands.Cog):
-    def __init__(self, bot, admins):
+    def __init__(self, bot, admins, logger):
         self.__bot = bot
         self.__admins = admins
+        self.__logger = logger
+
+    @commands.command(pass_context=True, hidden=True, no_pm=True)
+    async def generate_levels(self, ctx, up_to=None):
+        embed = discord.Embed()
+        embed.set_author(name=self.__bot.user.name,
+                         url=settings.URL,
+                         icon_url=self.__bot.user.avatar_url)
+
+        if ctx.message.author.id not in self.__admins:
+            embed.title = "Unauthorized"
+            embed.colour = 16312092
+            embed.description = "You don't have permissions to use " \
+                                "this command :/"
+
+        else:
+            async with session_lock:
+                with Session() as session:
+                    levels = crud_level.generate_many(
+                        session, up_to
+                    )
+
+            embed.title = "Levels generated."
+            embed.description = f"Levels generated up to {len(levels)}!"
+            embed.colour = 8161513
+
+        embed.timestamp = datetime.datetime.utcnow()
+        await ctx.send(embed=embed)
 
     @commands.command(pass_context=True, hidden=True, no_pm=True)
     async def load_dump(self, ctx, filename=None):
@@ -93,7 +121,7 @@ class Utility(commands.Cog):
                         )
                         if db_server is None:
                             if server is None and "name" in member["server"]:
-                                name = member["server"]
+                                name = member["server"]["name"]
                             elif server is None and "name" not in member["server"]:
                                 name = "UNKNOWN"
                             else:
@@ -121,6 +149,8 @@ class Utility(commands.Cog):
                         )
 
                         if "level_id" in member:
+                            self.__logger.debug(member["level_id"])
+                        if "level_id" in member and member["level_id"] != "NULL":
                             current_level = int(member["level_id"])
                         else:
                             current_level = 0
