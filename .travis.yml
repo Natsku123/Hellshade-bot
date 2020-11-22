@@ -1,0 +1,23 @@
+language: python
+
+python:
+  - 3.9
+
+services:
+  - docker
+
+before_install:
+  - echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" --password-stdin "$REGISTRY"
+
+stages:
+  - name: build
+    if: branch = main
+
+jobs:
+  include:
+    - stage: build
+      name: Build latest
+      python: 3.9
+      script:
+          - docker build -t "$REGISTRY/$REPO:latest" .
+          - docker push "$REGISTRY/$REPO":latest"
