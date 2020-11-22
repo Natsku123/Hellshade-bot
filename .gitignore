@@ -5,3 +5,5 @@ files/
 venv/
 .idea/
 __pycache__/
+dump.py
+docker-compose-dev.yml
