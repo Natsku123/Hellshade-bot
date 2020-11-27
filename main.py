@@ -74,7 +74,7 @@ def main():
         async with session_lock:
             with Session() as session:
                 for server in bot.guilds:
-                    server_obj = await get_create(
+                    server_obj = get_create(
                         session, crud_server, obj_in=CreateServer(**{
                             "discord_id": server.id,
                             "name": server.name,
@@ -327,7 +327,7 @@ def main():
                                 )
 
                             if member_obj.exp + exp < next_level.exp:
-                                await crud_member.update(
+                                crud_member.update(
                                     session, db_obj=member_obj, obj_in={
                                         "exp": member_obj.exp + exp
                                     }
@@ -351,7 +351,7 @@ def main():
                             crud_server.update(
                                 session, db_obj=server_obj, obj_in={
                                     "name": member.guild.name,
-                                    "server_exp": server_obj + exp
+                                    "server_exp": server_obj.server_exp + exp
                                 }
                             )
 
