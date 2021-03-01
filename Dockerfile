@@ -2,7 +2,7 @@ FROM python:3.9-alpine
 
 LABEL maintainer="Max Mecklin <max@meckl.in>"
 
-RUN apk update && apk add python3-dev gcc libc-dev postgresql-dev
+RUN apk update && apk add python3-dev gcc libc-dev postgresql-dev build-base
 
 COPY . /bot
 
