@@ -52,10 +52,16 @@ def main():
     description = '''
     Rewrite of the original Hellshade-bot and Hellshade-bot 2
     '''
+
+    # Intents for experience tracking
+    intent = discord.Intents.default()
+    intent.members = True
+
     bot = commands.Bot(
         command_prefix=commands.when_mentioned_or('!', '/'),
         description=description,
-        owner_id=settings.BOT_OWNER
+        owner_id=settings.BOT_OWNER,
+        intent=intent
     )
 
     bot.add_cog(Utility(bot, settings.ADMINS, logger))
