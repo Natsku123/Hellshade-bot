@@ -4,6 +4,7 @@ import Home from '../views/Home.vue'
 import Levels from "@/views/Levels";
 import Members from "@/views/Members";
 import Servers from "@/views/Servers";
+import Server from "@/views/Server";
 
 Vue.use(VueRouter)
 
@@ -35,6 +36,11 @@ const routes = [
     path: '/servers',
     name: 'Servers',
     component: Servers
+  },
+  {
+    path: '/servers/:id',
+    name: 'Server',
+    component: Server
   }
 ]
 
