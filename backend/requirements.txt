@@ -1,0 +1,5 @@
+fastapi
+graphene_sqlalchemy
+graphene
+sqlalchemy
+psycopg2-binary
