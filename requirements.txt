@@ -1,9 +1,10 @@
 discord.py
-requests
-bs4
+requests~=2.25.0
+bs4~=0.0.1
 sqlalchemy>=1.4.0b1
-pydantic
+pydantic~=1.7.2
 asyncpg
-alembic
+alembic~=1.4.3
 psycopg2-binary
 chardet<4.0,>=2.0
+beautifulsoup4~=4.9.3
