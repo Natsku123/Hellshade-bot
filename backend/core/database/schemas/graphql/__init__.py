@@ -1,4 +1,4 @@
-from graphene import relay, ObjectType, Schema, Field, String, Int, Boolean
+from graphene import relay, ObjectType, Schema, Field, String, Int, Boolean, List
 from graphene_sqlalchemy import SQLAlchemyConnectionField
 from core.database.schemas.graphql.levels import Level
 from core.database.schemas.graphql.servers import Server
@@ -13,14 +13,14 @@ class Query(ObjectType):
     all_members = SQLAlchemyConnectionField(Member.connection)
     all_players = SQLAlchemyConnectionField(Player.connection)
 
-    level = Field(
+    level = List(
         Level,
         uuid=String(),
         value=Int(),
         title=String(),
         exp=Int()
     )
-    server = Field(
+    server = List(
         Server,
         uuid=String(),
         discord_id=String(),
@@ -28,7 +28,7 @@ class Query(ObjectType):
         server_exp=Int(),
         channel=String()
     )
-    member = Field(
+    member = List(
         Member,
         uuid=String(),
         exp=Int(),
@@ -36,7 +36,7 @@ class Query(ObjectType):
         server_uuid=String(),
         level_uuid=String()
     )
-    player = Field(
+    player = List(
         Player,
         uuid=String(),
         discord_id=String(),
@@ -46,19 +46,19 @@ class Query(ObjectType):
 
     def resolve_level(self, info, **kwargs):
         query = Level.get_query(info).filter_by(**kwargs)
-        return query.first()
+        return query.all()
 
     def resolve_server(self, info, **kwargs):
         query = Server.get_query(info).filter_by(**kwargs)
-        return query.first()
+        return query.all()
 
     def resolve_member(self, info, **kwargs):
         query = Member.get_query(info).filter_by(**kwargs)
-        return query.first()
+        return query.all()
 
     def resolve_player(self, info, **kwargs):
         query = Player.get_query(info).filter_by(**kwargs)
-        return query.first()
+        return query.all()
 
 
 schema = Schema(query=Query)
