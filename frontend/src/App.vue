@@ -14,7 +14,6 @@
       </v-list-item>
 
       <v-divider />
-
       <v-list dense nav>
 
         <v-list-item link to="/">
@@ -53,7 +52,15 @@
         </v-list-item>
 
       </v-list>
-
+      <v-spacer />
+      <v-row class="mx-2">
+        <v-col>
+          <v-switch
+              v-model="$vuetify.theme.dark"
+              label="Dark Mode"
+          ></v-switch>
+        </v-col>
+      </v-row>
     </v-navigation-drawer>
 
     <v-main>
