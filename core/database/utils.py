@@ -197,3 +197,32 @@ def add_to_role(
     db.commit()
 
     return True, db_role.discord_id
+
+
+def remove_from_role(
+        db: Session,
+        member_uuid: UUID,
+        *,
+        role_uuid: UUID = None,
+        role_discord_id: str = None,
+        role_name: str = None
+) -> bool:
+    db_member = crud_member.get(db, uuid=member_uuid)
+
+    if role_uuid:
+        db_role = crud_role.get(db, uuid=role_uuid)
+    elif role_discord_id:
+        db_role = crud_role.get_by_discord(db, discord_id=role_discord_id)
+    elif role_name:
+        db_role = crud_role.get_by_name(db, name=role_name)
+    else:
+        raise ValueError(
+            "Must have either role_uuid, role_discord_id or role_name!"
+        )
+    if db_role is None or db_member is None:
+        return False
+
+    db_member.roles.remove(db_role)
+    db.commit()
+
+    return True
