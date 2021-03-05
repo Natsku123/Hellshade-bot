@@ -1,5 +1,5 @@
 import uuid
-from core.database.models import Base
+from core.database.models import Base, member_role_association
 from core.database.types import GUID
 from sqlalchemy import Column, Integer, ForeignKey
 from sqlalchemy.orm import relationship
@@ -17,3 +17,7 @@ class Member(Base):
     )
     server = relationship('Server', uselist=False, back_populates='members')
     level = relationship('Level', uselist=False)
+    roles = relationship(
+        'Role', secondary=member_role_association,
+        back_populates="members"
+    )
