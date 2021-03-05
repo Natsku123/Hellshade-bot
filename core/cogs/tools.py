@@ -5,7 +5,7 @@ from core.database import Session, session_lock
 from core.database.crud.roles import role as role_crud
 from core.database.crud.members import member as member_crud
 from core.database.schemas.roles import UpdateRole
-from core.database.utils import get_create_ctx, add_to_role
+from core.database.utils import get_create_ctx, add_to_role, remove_from_role
 from datetime import datetime
 
 
@@ -100,7 +100,10 @@ class Tools(commands.Cog):
                                         "it is not assignable."
                 else:
                     try:
-                        await ctx.author.add_roles([{"id": d_id}])
+                        await ctx.author.add_roles(
+                            [{"id": d_id}],
+                            reason="Added through role add command."
+                        )
 
                         embed.title = f"{ctx.author.name} has been " \
                                       f"added to {name}!"
@@ -108,6 +111,8 @@ class Tools(commands.Cog):
                     except Forbidden:
                         embed.title = "I don't have a permission to do that :("
                         embed.colour = 16312092
+                        embed.description = "Give me a permission to manage" \
+                                            " roles or give me a higher role."
                     except HTTPException:
                         embed.title = "Something happened, didn't succeed :/"
                         embed.colour = 16312092
@@ -123,7 +128,44 @@ class Tools(commands.Cog):
         :param name: Role name
         :return:
         """
-        pass
+        embed = Embed()
+        embed.set_author(name=self.__bot.user.name,
+                         url=settings.URL,
+                         icon_url=self.__bot.user.avatar_url)
+        async with session_lock:
+            with Session() as session:
+                db_member = get_create_ctx(ctx, session, member_crud)
+
+                success, d_id = remove_from_role(
+                    session, db_member.uuid, role_name=name
+                )
+
+                if not success:
+                    embed.title = "This role is not assignable!"
+                    embed.colour = 16312092
+                    embed.description = "This role doesn't exists or " \
+                                        "it is not assignable."
+                else:
+                    try:
+                        await ctx.author.remove_roles(
+                            [{"id": d_id}],
+                            reason="Removed through role remove command."
+                        )
+
+                        embed.title = f"{ctx.author.name} has been " \
+                                      f"removed from {name}!"
+                        embed.colour = 8161513
+                    except Forbidden:
+                        embed.title = "I don't have a permission to do that :("
+                        embed.colour = 16312092
+                        embed.description = "Give me a permission to manage" \
+                                            " roles or give me a higher role."
+                    except HTTPException:
+                        embed.title = "Something happened, didn't succeed :/"
+                        embed.colour = 16312092
+
+        embed.timestamp = datetime.utcnow()
+        await ctx.send(embed=embed)
 
     @role.command(pass_context=True, no_pm=True)
     async def create(self, ctx, discord_id):
