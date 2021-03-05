@@ -18,6 +18,18 @@ class CRUDBase(Generic[ModelType, CreateType, UpdateType]):
     def __init__(self, model: Type[ModelType]):
         self.model = model
 
+    def get_count(
+            self, db: Session
+    ) -> int:
+        """
+        Get number of objects
+        :param db: Database Session
+        :return:
+        """
+        query = select(self.model)
+        result = db.execute(query)
+        return result.count()
+
     def get(
             self, db: Session, uuid: UUID
     ) -> Optional[ModelType]:
