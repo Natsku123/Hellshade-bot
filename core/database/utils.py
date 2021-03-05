@@ -1,7 +1,7 @@
 from uuid import UUID
 from discord.ext.commands import Context
 from sqlalchemy.orm import Session
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 
 from core.database.crud.servers import CRUDServer
 from core.database.crud.servers import server as crud_server
@@ -177,7 +177,7 @@ def add_to_role(
         role_uuid: UUID = None,
         role_discord_id: str = None,
         role_name: str = None
-) -> bool:
+) -> Tuple[bool, str]:
     db_member = crud_member.get(db, uuid=member_uuid)
 
     if role_uuid:
@@ -190,10 +190,10 @@ def add_to_role(
         raise ValueError(
             "Must have either role_uuid, role_discord_id or role_name!"
         )
-    if db_role is None or db_member:
-        return False
+    if db_role is None or db_member is None:
+        return False, ""
 
     db_member.roles.append(db_role)
     db.commit()
 
-    return True
+    return True, db_role.discord_id

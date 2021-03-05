@@ -1,9 +1,11 @@
 from discord.ext import commands, tasks
-from discord import Embed
+from discord import Embed, Forbidden, HTTPException
 from core.config import settings
 from core.database import Session, session_lock
 from core.database.crud.roles import role as role_crud
+from core.database.crud.members import member as member_crud
 from core.database.schemas.roles import UpdateRole
+from core.database.utils import get_create_ctx, add_to_role
 from datetime import datetime
 
 
@@ -78,7 +80,40 @@ class Tools(commands.Cog):
         :param name: Role name
         :return:
         """
-        pass
+        embed = Embed()
+        embed.set_author(name=self.__bot.user.name,
+                         url=settings.URL,
+                         icon_url=self.__bot.user.avatar_url)
+        async with session_lock:
+            with Session() as session:
+                db_member = get_create_ctx(ctx, session, member_crud)
+
+                found, d_id = add_to_role(
+                    session, db_member.uuid, role_name=name
+                )
+
+                # If role is not found
+                if not found:
+                    embed.title = "This role is not assignable!"
+                    embed.colour = 16312092
+                    embed.description = "This role doesn't exists or " \
+                                        "it is not assignable."
+                else:
+                    try:
+                        await ctx.author.add_roles([{"id": d_id}])
+
+                        embed.title = f"{ctx.author.name} has been " \
+                                      f"added to {name}!"
+                        embed.colour = 8161513
+                    except Forbidden:
+                        embed.title = "I don't have a permission to do that :("
+                        embed.colour = 16312092
+                    except HTTPException:
+                        embed.title = "Something happened, didn't succeed :/"
+                        embed.colour = 16312092
+
+        embed.timestamp = datetime.utcnow()
+        await ctx.send(embed=embed)
 
     @role.command(pass_context=True, no_pm=True)
     async def remove(self, ctx, name):
