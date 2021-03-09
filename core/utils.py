@@ -1,7 +1,22 @@
 import math
 import datetime
+import discord
 
 from typing import Tuple
+
+
+def get_admins():
+    """
+    Gets members of Discord Developer Team
+
+    :return:
+    """
+    admins = []
+    for team_member in discord.AppInfo.team.members:
+        if team_member.membership_state == \
+                discord.TeamMembershipState.accepted:
+            admins.append(team_member.id)
+    return admins
 
 
 def progress_bar(

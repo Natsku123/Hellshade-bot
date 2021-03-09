@@ -13,7 +13,7 @@ from core.database.schemas.servers import CreateServer
 from core.database.schemas.members import CreateMember
 from core.database.schemas.levels import CreateLevel
 from core.database.utils import get_create
-from core.utils import progress_bar, level_exp, process_exp
+from core.utils import progress_bar, level_exp, process_exp, get_admins
 
 
 class Utility(commands.Cog):
@@ -29,7 +29,7 @@ class Utility(commands.Cog):
                          url=settings.URL,
                          icon_url=self.__bot.user.avatar_url)
 
-        if ctx.message.author.id not in self.__admins:
+        if ctx.message.author.id not in get_admins():
             embed.title = "Unauthorized"
             embed.colour = 16312092
             embed.description = "You don't have permissions to use " \
@@ -56,7 +56,7 @@ class Utility(commands.Cog):
                          url=settings.URL,
                          icon_url=self.__bot.user.avatar_url)
 
-        if ctx.message.author.id not in self.__admins:
+        if ctx.message.author.id not in get_admins():
             embed.title = "Unauthorized"
             embed.colour = 16312092
             embed.description = "You don't have permissions to use " \
@@ -198,7 +198,7 @@ class Utility(commands.Cog):
         embed.set_author(name=self.__bot.user.name,
                          url=settings.URL,
                          icon_url=self.__bot.user.avatar_url)
-        if ctx.message.author.id not in self.__admins:
+        if ctx.message.author.id not in get_admins():
             embed.title = "Unauthorized"
             embed.colour = 16312092
             embed.description = "You don't have permissions to use " \
@@ -273,7 +273,7 @@ class Utility(commands.Cog):
             name=self.__bot.user.name, url=settings.URL,
             icon_url=self.__bot.user.avatar_url
         )
-        if ctx.message.author.id not in self.__admins:
+        if ctx.message.author.id not in get_admins():
             embed.title = "Unauthorized"
             embed.colour = 16312092
             embed.description = "You don't have permissions to use this " \
