@@ -12,4 +12,4 @@ class Server(Base):
     name = Column(String, nullable=False)
     server_exp = Column(Integer, nullable=True)
     channel = Column(String, nullable=True)
-    members = relationship('Member')
+    members = relationship('Member', lazy="joined", join_depth=3)

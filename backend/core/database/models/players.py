@@ -11,7 +11,7 @@ class Player(Base):
     discord_id = Column(String, nullable=False, unique=True)
     name = Column(String, nullable=False)
     hidden = Column(Boolean, nullable=False, default=True)
-    memberships = relationship('Member')
+    memberships = relationship('Member', lazy="joined", join_depth=3)
 
     def __repr__(self):
         return f"Player({self.uuid=}, {self.discord_id=}, {self.name=}, " \

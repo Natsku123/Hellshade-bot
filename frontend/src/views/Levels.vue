@@ -2,7 +2,17 @@
   <div class="levels">
     <v-row>
       <v-col md="12">
-        <LevelsExpChart height="100" :options="chartOptions" :range="range" />
+        <LevelsExpChart :height="100" :options="chartOptions" :range="range" />
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col md="12">
+        <v-text-field
+          v-model="range[1]"
+          single-line
+          type="number"
+          label="Levels"
+        />
       </v-col>
     </v-row>
   </div>
@@ -11,32 +21,32 @@
 <script>
 import LevelsExpChart from "@/components/LevelsExpChart";
 export default {
-  name: 'Levels',
+  name: "Levels",
   components: {
     LevelsExpChart
   },
   data: () => ({
     chartOptions: {
       scales: {
-        yAxes: [{
-          id: 'A',
-          type: 'linear',
-          position: 'left',
-        }, {
-          id: 'B',
-          type: 'linear',
-          position: 'right',
-          ticks: {
-            min: 0,
-            max: 15
+        yAxes: [
+          {
+            id: "A",
+            type: "linear",
+            position: "left"
+          },
+          {
+            id: "B",
+            type: "linear",
+            position: "right",
+            ticks: {
+              min: 0,
+              max: 15
+            }
           }
-        }]
+        ]
       }
     },
-    range: {
-      min: 0,
-      max: 150
-    }
-  }),
-}
+    range: [0, 150]
+  })
+};
 </script>

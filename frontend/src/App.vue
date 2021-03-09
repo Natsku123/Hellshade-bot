@@ -1,7 +1,6 @@
 <template>
   <v-app>
     <v-navigation-drawer app>
-
       <v-list-item>
         <v-list-item-content>
           <v-list-item-title class="title">
@@ -15,7 +14,6 @@
 
       <v-divider />
       <v-list dense nav>
-
         <v-list-item link to="/">
           <v-list-item-icon><v-icon>mdi-home</v-icon></v-list-item-icon>
           <v-list-item-content>
@@ -45,20 +43,18 @@
         </v-list-item>
 
         <v-list-item link to="/members">
-          <v-list-item-icon><v-icon>mdi-account-group</v-icon></v-list-item-icon>
+          <v-list-item-icon
+            ><v-icon>mdi-account-group</v-icon></v-list-item-icon
+          >
           <v-list-item-content>
             <v-list-item-title>Members</v-list-item-title>
           </v-list-item-content>
         </v-list-item>
-
       </v-list>
       <v-spacer />
       <v-row class="mx-2">
         <v-col>
-          <v-switch
-              v-model="$vuetify.theme.dark"
-              label="Dark Mode"
-          ></v-switch>
+          <v-switch v-model="$vuetify.theme.dark" label="Dark Mode"></v-switch>
         </v-col>
       </v-row>
     </v-navigation-drawer>
@@ -69,8 +65,7 @@
       </v-container>
     </v-main>
 
-    <v-footer app>
-    </v-footer>
+    <v-footer app> </v-footer>
   </v-app>
 </template>
 
