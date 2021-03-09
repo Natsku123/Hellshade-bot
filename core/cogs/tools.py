@@ -168,11 +168,12 @@ class Tools(commands.Cog):
         await ctx.send(embed=embed)
 
     @role.command(pass_context=True, no_pm=True)
-    async def create(self, ctx, discord_id):
+    async def create(self, ctx, discord_id, description):
         """
         Create assignable role
         :param ctx: Context
         :param discord_id: Role Discord ID
+        :param description: Description of role usage
         :return:
         """
         pass

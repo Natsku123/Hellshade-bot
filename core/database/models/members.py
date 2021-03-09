@@ -1,8 +1,15 @@
 import uuid
-from core.database.models import Base, member_role_association
+from core.database.models import Base
 from core.database.types import GUID
-from sqlalchemy import Column, Integer, ForeignKey
+from sqlalchemy import Column, Integer, ForeignKey, Table
 from sqlalchemy.orm import relationship
+
+
+member_role_association = Table(
+    'member_role_association', Base.metadata,
+    Column('role_uuid', GUID(), ForeignKey('roles.uuid')),
+    Column('member_uuid', GUID(), ForeignKey('members.uuid'))
+)
 
 
 class Member(Base):
@@ -21,3 +28,4 @@ class Member(Base):
         'Role', secondary=member_role_association,
         back_populates="members"
     )
+

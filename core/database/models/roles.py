@@ -1,8 +1,10 @@
 import uuid
-from core.database.models import Base, member_role_association
+from core.database.models import Base
 from core.database.types import GUID
 from sqlalchemy import Column, String
 from sqlalchemy.orm import relationship
+
+from core.database.models.members import member_role_association
 
 
 class Role(Base):
