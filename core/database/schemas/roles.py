@@ -1,9 +1,11 @@
 from pydantic import BaseModel
+from typing import Optional
 
 
 class RoleBase(BaseModel):
     discord_id: str
     name: str
+    description: str = ""
 
     class Config:
         orm_mode = True
@@ -14,4 +16,5 @@ class CreateRole(RoleBase):
 
 
 class UpdateRole(BaseModel):
-    name: str
+    name: Optional[str]
+    description: Optional[str]
