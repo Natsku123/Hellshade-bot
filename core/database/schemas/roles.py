@@ -1,3 +1,4 @@
+from uuid import UUID
 from pydantic import BaseModel
 from typing import Optional
 
@@ -18,3 +19,16 @@ class CreateRole(RoleBase):
 class UpdateRole(BaseModel):
     name: Optional[str]
     description: Optional[str]
+
+
+class RoleEmojiBase(BaseModel):
+    identifier: str
+    role_uuid: UUID
+
+
+class CreateRoleEmoji(RoleEmojiBase):
+    pass
+
+
+class UpdateRoleEmoji(BaseModel):
+    identifier: Optional[str]

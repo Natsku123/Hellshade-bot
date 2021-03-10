@@ -4,7 +4,7 @@ from core.database.schemas.members import MemberBase
 from core.database.schemas.players import PlayerBase
 from core.database.schemas.levels import LevelBase
 from core.database.schemas.servers import ServerBase
-from core.database.schemas.roles import RoleBase
+from core.database.schemas.roles import RoleBase, RoleEmojiBase
 
 
 class Member(MemberBase):
@@ -31,3 +31,8 @@ class Server(ServerBase):
 class Role(RoleBase):
     uuid: UUID
     members: List['Member'] = []
+
+
+class RoleEmoji(RoleEmojiBase):
+    uuid: UUID
+    role: 'Role'
