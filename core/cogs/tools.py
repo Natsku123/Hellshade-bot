@@ -8,10 +8,15 @@ from core.database.schemas.roles import UpdateRole
 from core.database.utils import get_create_ctx, add_to_role, remove_from_role
 from datetime import datetime
 
+from core.utils import Colors
+
 
 class Tools(commands.Cog):
     def __init__(self, bot):
         self.__bot = bot
+
+        # Start tasks
+        self.role_update.start()
 
     @tasks.loop(minutes=30)
     async def role_update(self):
@@ -48,7 +53,7 @@ class Tools(commands.Cog):
                         if r.name == temp_roles[r.id]:
                             continue
 
-                        role_update = UpdateRole(*{
+                        role_update = UpdateRole(**{
                             "name": r.name
                         })
 
@@ -95,7 +100,7 @@ class Tools(commands.Cog):
                 # If role is not found
                 if not found:
                     embed.title = "This role is not assignable!"
-                    embed.colour = 16312092
+                    embed.colour = Colors.error
                     embed.description = "This role doesn't exists or " \
                                         "it is not assignable."
                 else:
@@ -107,15 +112,15 @@ class Tools(commands.Cog):
 
                         embed.title = f"{ctx.author.name} has been " \
                                       f"added to {name}!"
-                        embed.colour = 8161513
+                        embed.colour = Colors.success
                     except Forbidden:
                         embed.title = "I don't have a permission to do that :("
-                        embed.colour = 16312092
+                        embed.colour = Colors.unauthorized
                         embed.description = "Give me a permission to manage" \
                                             " roles or give me a higher role."
                     except HTTPException:
                         embed.title = "Something happened, didn't succeed :/"
-                        embed.colour = 16312092
+                        embed.colour = Colors.error
 
         embed.timestamp = datetime.utcnow()
         await ctx.send(embed=embed)
@@ -142,7 +147,7 @@ class Tools(commands.Cog):
 
                 if not success:
                     embed.title = "This role is not assignable!"
-                    embed.colour = 16312092
+                    embed.colour = Colors.error
                     embed.description = "This role doesn't exists or " \
                                         "it is not assignable."
                 else:
@@ -154,15 +159,15 @@ class Tools(commands.Cog):
 
                         embed.title = f"{ctx.author.name} has been " \
                                       f"removed from {name}!"
-                        embed.colour = 8161513
+                        embed.colour = Colors.success
                     except Forbidden:
                         embed.title = "I don't have a permission to do that :("
-                        embed.colour = 16312092
+                        embed.colour = Colors.unauthorized
                         embed.description = "Give me a permission to manage" \
                                             " roles or give me a higher role."
                     except HTTPException:
                         embed.title = "Something happened, didn't succeed :/"
-                        embed.colour = 16312092
+                        embed.colour = Colors.error
 
         embed.timestamp = datetime.utcnow()
         await ctx.send(embed=embed)
