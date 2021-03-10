@@ -26,14 +26,9 @@ from core.database.schemas.players import CreatePlayer
 from core.database.schemas.servers import CreateServer
 from core.utils import next_weekday, level_exp
 
-cogs = ['core.cogs.utility', 'core.cogs.games']
-
 logger = logging.getLogger('discord')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
-# handler = logging.FileHandler(
-#     filename='files/discord.log', encoding='utf-8', mode='w'
-# )
 handler.setFormatter(
     logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s')
 )
@@ -48,9 +43,8 @@ def main():
     Rewrite of the original Hellshade-bot and Hellshade-bot 2
     '''
 
-    # Intents for experience tracking
-    intent = discord.Intents.default()
-    intent.members = True
+    # Intents for experience tracking etc.
+    intent = discord.Intents.all()
 
     bot = commands.Bot(
         command_prefix=commands.when_mentioned_or('!', '/'),

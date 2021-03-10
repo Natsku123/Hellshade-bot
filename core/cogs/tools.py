@@ -192,17 +192,21 @@ class Tools(commands.Cog):
                          url=settings.URL,
                          icon_url=self.__bot.user.avatar_url)
         async with session_lock:
-            d_role = ctx.guild.get_role(discord_id)
             with Session() as session:
-                role = CreateRole(**{
-                    "discord_id": discord_id,
-                    "name": d_role.name,
-                    "description": description
-                })
+                d_role = ctx.guild.get_role(discord_id)
+                if d_role is None:
+                    embed.title = "Role not found."
+                    embed.colour = Colors.error
+                else:
+                    role = CreateRole(**{
+                        "discord_id": discord_id,
+                        "name": d_role.name,
+                        "description": description
+                    })
 
-                db_role = role_crud.create(session, obj_in=role)
-                embed.title = f"Role {db_role.name} created."
-                embed.colour = Colors.success
+                    db_role = role_crud.create(session, obj_in=role)
+                    embed.title = f"Role {db_role.name} created."
+                    embed.colour = Colors.success
         embed.timestamp = datetime.utcnow()
         await ctx.send(embed=embed)
 
