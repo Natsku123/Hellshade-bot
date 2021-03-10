@@ -2,9 +2,12 @@ from discord.ext import commands, tasks
 from discord import Embed, Forbidden, HTTPException
 from core.config import settings
 from core.database import Session, session_lock
-from core.database.crud.roles import role as role_crud
+from core.database.crud.roles import role as role_crud, \
+    role_emoji as emoji_crud
 from core.database.crud.members import member as member_crud
+from core.database.crud.servers import server as server_crud
 from core.database.schemas.roles import UpdateRole, CreateRole
+from core.database.schemas.servers import UpdateServer
 from core.database.utils import get_create_ctx, add_to_role, remove_from_role
 from datetime import datetime
 
@@ -84,7 +87,7 @@ class Tools(commands.Cog):
             await ctx.send(embed=embed)
 
     @role.command(pass_context=True, no_pm=True)
-    async def add(self, ctx, name):
+    async def add(self, ctx, name: str):
         """
         Assign role for author
         :param ctx: Context
@@ -132,7 +135,7 @@ class Tools(commands.Cog):
         await ctx.send(embed=embed)
 
     @role.command(pass_context=True, no_pm=True)
-    async def remove(self, ctx, name):
+    async def remove(self, ctx, name: str):
         """
         Remove role from author
         :param ctx: Context
@@ -179,7 +182,7 @@ class Tools(commands.Cog):
         await ctx.send(embed=embed)
 
     @role.command(pass_context=True, no_pm=True)
-    async def create(self, ctx, discord_id, description):
+    async def create(self, ctx, discord_id: int, description: str):
         """
         Create assignable role
         :param ctx: Context
@@ -211,7 +214,7 @@ class Tools(commands.Cog):
         await ctx.send(embed=embed)
 
     @role.command(pass_context=True, no_pm=True)
-    async def update(self,ctx, discord_id, description):
+    async def update(self, ctx, discord_id: int, description: str):
         """
         Update role description
 
@@ -246,7 +249,7 @@ class Tools(commands.Cog):
         await ctx.send(embed=embed)
 
     @role.command(pass_context=True, no_pm=True)
-    async def delete(self, ctx, discord_id):
+    async def delete(self, ctx, discord_id: int):
         """
         Delete assignable role
         :param ctx: Context
@@ -321,3 +324,80 @@ class Tools(commands.Cog):
 
         embed.timestamp = datetime.utcnow()
         await ctx.send(embed=embed)
+
+    @role.command(pass_context=True, no_pm=True, hidden=True)
+    async def init(self, ctx):
+        """
+        Initialize role message for current channel
+
+        :param ctx: Context
+        :return:
+        """
+        async with session_lock:
+            with Session() as session:
+                db_server = get_create_ctx(ctx, session, server_crud)
+
+                embed = Embed()
+                embed.title = f"Assignable roles for **{ctx.guild.name}**"
+                embed.description = "Use reactions inorder to get " \
+                                    "roles assigned to you, or use " \
+                                    "`!role add roleName`"
+
+                converter = commands.EmojiConverter()
+
+                # Get all roles that exist
+                roles = role_crud.get_multi(
+                    session, limit=role_crud.get_count(session)
+                )
+
+                # Parse roles into dict for "better performance"
+                temp_roles = {}
+                for role in roles:
+                    temp_roles[role.discord_id] = {
+                        'role': role,
+                        'emoji': None
+                    }
+
+                server_roles = []
+
+                # Filter roles based on server
+                for r in ctx.guild.roles:
+
+                    # Skip roles that are default or premium
+                    if r.is_default or r.is_premium_subscriber:
+                        continue
+
+                    # Add to compiled list
+                    if r.id in temp_roles:
+                        emoji = emoji_crud.get_by_role(
+                            session, temp_roles[r.id]['role'].uuid
+                        )
+                        temp_roles[r.id]['emoji'] = emoji
+                        server_roles.append(temp_roles[r.id])
+
+                for r in server_roles:
+
+                    # Skip roles without emojis
+                    if r['emoji'] is None:
+                        continue
+
+                    # Convert into actual emoji
+                    e = await converter.convert(ctx, r['emoji'].identifier)
+
+                    # Add to message
+                    embed.add_field(
+                        name=str(e), value=r['role'].name, inline=False
+                    )
+
+                # Send message
+                role_message = await ctx.send(embed=embed)
+
+                # Update server object to include role message data
+                server_update = UpdateServer(**{
+                    "role_message": str(role_message.id),
+                    "role_channel": str(ctx.channel.id)
+                })
+
+                server_crud.update(
+                    session, db_obj=db_server, obj_in=server_update
+                )
