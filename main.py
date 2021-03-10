@@ -24,13 +24,6 @@ from core.database.schemas.players import CreatePlayer
 from core.database.schemas.servers import CreateServer
 from core.utils import next_weekday, level_exp
 
-
-class Shutdown(Exception):
-    pass
-
-
-running = True
-
 cogs = ['core.cogs.utility', 'core.cogs.games']
 
 logger = logging.getLogger('discord')
