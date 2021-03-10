@@ -12,4 +12,6 @@ class Server(Base):
     name = Column(String, nullable=False)
     server_exp = Column(Integer, nullable=True)
     channel = Column(String, nullable=True)
+    role_channel = Column(String, nullable=True)
+    role_message = Column(String, nullable=True)
     members = relationship('Member')
