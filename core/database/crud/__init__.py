@@ -1,7 +1,7 @@
 from uuid import UUID
 from pydantic import BaseModel
 from sqlalchemy.future import select
-from sqlalchemy import delete, update
+from sqlalchemy import delete, update, func
 from sqlalchemy.orm import Session
 from core.database.models import Base
 from typing import Generic, TypeVar, Type, Any, Optional, List, Union, Dict
@@ -26,9 +26,9 @@ class CRUDBase(Generic[ModelType, CreateType, UpdateType]):
         :param db: Database Session
         :return:
         """
-        query = select(self.model)
+        query = select(func.count(self.model))
         result = db.execute(query)
-        return result.count()
+        return result.scalars().one()
 
     def get(
             self, db: Session, uuid: UUID
