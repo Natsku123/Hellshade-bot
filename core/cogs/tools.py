@@ -68,12 +68,18 @@ class Tools(commands.Cog):
 
     @commands.group(no_pm=True)
     async def role(self, ctx):
+        """
+        Role management, more on !help role
+
+        :param ctx: Context
+        :return:
+        """
         if ctx.invoked_subcommand is None:
             embed = Embed()
             embed.set_author(name=self.__bot.user.name,
                              url=settings.URL,
                              icon_url=self.__bot.user.avatar_url)
-            embed.title("Invalid role command! `!help role` for more info")
+            embed.title = "Invalid role command! `!help role` for more info"
             embed.timestamp = datetime.utcnow()
             await ctx.send(embed=embed)
 
@@ -186,11 +192,11 @@ class Tools(commands.Cog):
                          url=settings.URL,
                          icon_url=self.__bot.user.avatar_url)
         async with session_lock:
-            d_channel = self.__bot.get_channel(discord_id)
+            d_role = ctx.guild.get_role(discord_id)
             with Session() as session:
                 role = CreateRole(**{
                     "discord_id": discord_id,
-                    "name": d_channel.name,
+                    "name": d_role.name,
                     "description": description
                 })
 
