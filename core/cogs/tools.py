@@ -4,7 +4,7 @@ from core.config import settings
 from core.database import Session, session_lock
 from core.database.crud.roles import role as role_crud
 from core.database.crud.members import member as member_crud
-from core.database.schemas.roles import UpdateRole
+from core.database.schemas.roles import UpdateRole, CreateRole
 from core.database.utils import get_create_ctx, add_to_role, remove_from_role
 from datetime import datetime
 
@@ -181,7 +181,59 @@ class Tools(commands.Cog):
         :param description: Description of role usage
         :return:
         """
-        pass
+        embed = Embed()
+        embed.set_author(name=self.__bot.user.name,
+                         url=settings.URL,
+                         icon_url=self.__bot.user.avatar_url)
+        async with session_lock:
+            d_channel = self.__bot.get_channel(discord_id)
+            with Session() as session:
+                role = CreateRole(**{
+                    "discord_id": discord_id,
+                    "name": d_channel.name,
+                    "description": description
+                })
+
+                db_role = role_crud.create(session, obj_in=role)
+                embed.title = f"Role {db_role.name} created."
+                embed.colour = Colors.success
+        embed.timestamp = datetime.utcnow()
+        await ctx.send(embed=embed)
+
+    @role.command(pass_context=True, no_pm=True)
+    async def update(self,ctx, discord_id, description):
+        """
+        Update role description
+
+        :param ctx: Context
+        :param discord_id: Role Discord ID
+        :param description: New description of Role
+        :return:
+        """
+        embed = Embed()
+        embed.set_author(name=self.__bot.user.name,
+                         url=settings.URL,
+                         icon_url=self.__bot.user.avatar_url)
+        async with session_lock:
+            with Session() as session:
+                db_role = role_crud.get_by_discord(session, discord_id)
+                if db_role is None:
+                    embed.title = "Role not found"
+                    embed.colour = Colors.error
+                else:
+                    role_update = UpdateRole(**{
+                        "description": description
+                    })
+
+                    db_role = role_crud.update(
+                        session, db_obj=db_role, obj_in=role_update
+                    )
+
+                    embed.title = f"Role {db_role.name} updated."
+                    embed.colour = Colors.success
+
+        embed.timestamp = datetime.utcnow()
+        await ctx.send(embed=embed)
 
     @role.command(pass_context=True, no_pm=True)
     async def delete(self, ctx, discord_id):
@@ -191,4 +243,21 @@ class Tools(commands.Cog):
         :param discord_id: Role Discord ID
         :return:
         """
-        pass
+        embed = Embed()
+        embed.set_author(name=self.__bot.user.name,
+                         url=settings.URL,
+                         icon_url=self.__bot.user.avatar_url)
+        async with session_lock:
+            with Session() as session:
+                db_role = role_crud.get_by_discord(session, discord_id)
+
+                if db_role is None:
+                    embed.title = "Role not found"
+                    embed.colour = Colors.error
+                else:
+                    db_role = role_crud.remove(session, db_role.uuid)
+                    embed.title = f"Role {db_role.name} removed."
+                    embed.colour = Colors.success
+
+        embed.timestamp = datetime.utcnow()
+        await ctx.send(embed=embed)
