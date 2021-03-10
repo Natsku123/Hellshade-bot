@@ -1,5 +1,5 @@
 from discord.ext import commands, tasks
-from discord import Embed, Forbidden, HTTPException
+from discord import Embed, Forbidden, HTTPException, utils
 from core.config import settings
 from core.database import Session, session_lock
 from core.database.crud.roles import role as role_crud, \
@@ -40,8 +40,10 @@ class Tools(commands.Cog):
                 for role in roles:
                     temp_roles[role.discord_id] = role
 
-                # Go through all roles visible
+                # Go through all visible guilds
                 for guild in self.__bot.guilds:
+
+                    # Go through all roles of a guild
                     for r in guild.roles:
 
                         # Skip roles that are default or premium
@@ -64,6 +66,89 @@ class Tools(commands.Cog):
                         role_crud.update(
                             session, temp_roles[r.id], role_update
                         )
+
+                    # Update role message if it exists
+                    server = server_crud.get_by_discord(session, guild.id)
+                    if server.role_message is not None and \
+                            server.role_channel is not None:
+                        channel = self.__bot.get_channel(server.role_channel)
+
+                        # Continue if channel wasn't found
+                        if channel is None:
+                            continue
+
+                        # Channel must not be bloated with messages
+                        message = utils.find(
+                            lambda m: (m.author.id == self.__bot.user.id and
+                                       len(m.embeds) > 0 and
+                                       m.embeds[0].title.startswith(
+                                           "Assignable roles for"
+                                       )),
+                            await channel.history(limit=10).flatten()
+                        )
+
+                        # Continue if message wasn't found
+                        if message is None:
+                            continue
+
+                        # Get context
+                        ctx = self.__bot.get_context(message)
+
+                        embed = Embed()
+                        embed.title = f"Assignable roles for " \
+                                      f"**{message.guild.name}**"
+                        embed.description = "Use reactions inorder to get " \
+                                            "roles assigned to you, or use " \
+                                            "`!role add roleName`"
+
+                        converter = commands.EmojiConverter()
+
+                        # Get all roles that exist
+                        roles = role_crud.get_multi(
+                            session, limit=role_crud.get_count(session)
+                        )
+
+                        # Parse roles into dict for "better performance"
+                        temp_roles = {}
+                        for role in roles:
+                            temp_roles[role.discord_id] = {
+                                'role': role,
+                                'emoji': None
+                            }
+
+                        server_roles = []
+
+                        # Filter roles based on server
+                        for r in message.guild.roles:
+
+                            # Skip roles that are default or premium
+                            if r.is_default or r.is_premium_subscriber:
+                                continue
+
+                            # Add to compiled list
+                            if r.id in temp_roles:
+                                emoji = emoji_crud.get_by_role(
+                                    session, temp_roles[r.id]['role'].uuid
+                                )
+                                temp_roles[r.id]['emoji'] = emoji
+                                server_roles.append(temp_roles[r.id])
+
+                        for ro in server_roles:
+
+                            # Skip roles without emojis
+                            if ro['emoji'] is None:
+                                continue
+
+                            # Convert into actual emoji
+                            e = await converter.convert(ctx,
+                                                        ro['emoji'].identifier)
+
+                            # Add to message
+                            embed.add_field(
+                                name=str(e), value=ro['role'].name,
+                                inline=False
+                            )
+                        await message.edit(embed=embed)
 
     @role_update.before_loop
     async def before_loop(self):
