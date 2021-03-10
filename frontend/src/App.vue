@@ -50,11 +50,19 @@
             <v-list-item-title>Members</v-list-item-title>
           </v-list-item-content>
         </v-list-item>
+        <v-list-item link href="https://github.com/Natsku123/Hellshade-bot">
+          <v-list-item-icon>
+            <v-icon>mdi-github</v-icon>
+          </v-list-item-icon>
+          <v-list-item-content>
+            <v-list-item-title>Github</v-list-item-title>
+          </v-list-item-content>
+        </v-list-item>
       </v-list>
       <v-spacer />
       <v-row class="mx-2">
         <v-col>
-          <v-switch v-model="$vuetify.theme.dark" label="Dark Mode"></v-switch>
+          <v-switch v-model="dark" label="Dark Mode"></v-switch>
         </v-col>
       </v-row>
     </v-navigation-drawer>
@@ -68,6 +76,27 @@
     <v-footer app> </v-footer>
   </v-app>
 </template>
+
+<script>
+export default {
+  name: "App",
+  computed: {
+    dark: {
+      set(value) {
+        this.$vuetify.theme.dark = value;
+        localStorage.setItem("dark", value.toString());
+      },
+      get() {
+        return localStorage.getItem("dark") === "true";
+      }
+    }
+  },
+  mounted() {
+    const current = localStorage.getItem("dark");
+    this.$vuetify.theme.dark = current === "true";
+  }
+};
+</script>
 
 <style lang="scss">
 #app {
