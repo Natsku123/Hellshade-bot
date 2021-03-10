@@ -11,6 +11,8 @@ from discord.ext import commands, tasks
 
 from core.cogs.games import Games
 from core.cogs.utility import Utility
+from core.cogs.tools import Tools
+
 from core.config import settings
 from core.database import Session, session_lock
 from core.database.utils import get_create
@@ -59,6 +61,7 @@ def main():
 
     bot.add_cog(Utility(bot, settings.ADMINS, logger))
     bot.add_cog(Games(bot, logger))
+    bot.add_cog(Tools(bot))
 
     exp_lock = asyncio.Lock()
 
