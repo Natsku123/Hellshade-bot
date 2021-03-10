@@ -13,7 +13,7 @@ from core.database.schemas.servers import CreateServer
 from core.database.schemas.members import CreateMember
 from core.database.schemas.levels import CreateLevel
 from core.database.utils import get_create
-from core.utils import progress_bar, level_exp, process_exp, get_admins
+from core.utils import progress_bar, level_exp, process_exp, get_admins, Colors
 
 
 class Utility(commands.Cog):
@@ -29,9 +29,9 @@ class Utility(commands.Cog):
                          url=settings.URL,
                          icon_url=self.__bot.user.avatar_url)
 
-        if ctx.message.author.id not in get_admins():
+        if ctx.message.author.id not in await get_admins(self.__bot):
             embed.title = "Unauthorized"
-            embed.colour = 16312092
+            embed.colour = Colors.unauthorized
             embed.description = "You don't have permissions to use " \
                                 "this command :/"
 
@@ -44,7 +44,7 @@ class Utility(commands.Cog):
 
             embed.title = "Levels generated."
             embed.description = f"Levels generated up to {len(levels)}!"
-            embed.colour = 8161513
+            embed.colour = Colors.other
 
         embed.timestamp = datetime.datetime.utcnow()
         await ctx.send(embed=embed)
@@ -56,9 +56,9 @@ class Utility(commands.Cog):
                          url=settings.URL,
                          icon_url=self.__bot.user.avatar_url)
 
-        if ctx.message.author.id not in get_admins():
+        if ctx.message.author.id not in await get_admins(self.__bot):
             embed.title = "Unauthorized"
-            embed.colour = 16312092
+            embed.colour = Colors.unauthorized
             embed.description = "You don't have permissions to use " \
                                 "this command :/"
         else:
@@ -69,7 +69,7 @@ class Utility(commands.Cog):
                 with open(filename, "r") as dump_file:
                     data = json.load(dump_file)
             except OSError:
-                embed.colour = 16312092
+                embed.colour = Colors.unauthorized
                 embed.title = "File not found!"
                 embed.description = "Be sure that you inserted the right " \
                                     "filename and you have copied the file " \
@@ -186,7 +186,7 @@ class Utility(commands.Cog):
                             )
 
                         updated.append(db_member)
-            embed.colour = 8161513
+            embed.colour = Colors.other
             embed.title = "Members loaded from dump file."
             embed.description = f"Members updated: {len(updated)}"
         embed.timestamp = datetime.datetime.utcnow()
@@ -198,9 +198,9 @@ class Utility(commands.Cog):
         embed.set_author(name=self.__bot.user.name,
                          url=settings.URL,
                          icon_url=self.__bot.user.avatar_url)
-        if ctx.message.author.id not in get_admins():
+        if ctx.message.author.id not in await get_admins(self.__bot):
             embed.title = "Unauthorized"
-            embed.colour = 16312092
+            embed.colour = Colors.unauthorized
             embed.description = "You don't have permissions to use " \
                                 "this command :/"
         else:
@@ -224,11 +224,11 @@ class Utility(commands.Cog):
                                 }
                             )
                         embed.title = "Success"
-                        embed.colour = 1171983
+                        embed.colour = Colors.success
                         embed.description = "Channel successfully registered."
                     elif self.__bot.get_channel(int(channel_id)) is None and \
                             channel_id is not None:
-                        embed.colour = 13632027
+                        embed.colour = Colors.error
                         embed.title = "Error"
                         embed.description = "Channel not found."
                     else:
@@ -243,7 +243,7 @@ class Utility(commands.Cog):
 
                         embed.title = f"Levels channel for **{server.name}**"
                         if server.channel is not None:
-                            embed.colour = 8161513
+                            embed.colour = Colors.other
                             channel = self.__bot.get_channel(server.channel)
                             embed.add_field(
                                 name="Levels channel:", value=channel.name
@@ -252,7 +252,7 @@ class Utility(commands.Cog):
                                 name="Creation date:", value=channel.created_at
                             )
                         else:
-                            embed.colour = 16312092
+                            embed.colour = Colors.unauthorized
                             embed.add_field(
                                 name="Levels channel:",
                                 value="No channel for levels."
@@ -273,9 +273,9 @@ class Utility(commands.Cog):
             name=self.__bot.user.name, url=settings.URL,
             icon_url=self.__bot.user.avatar_url
         )
-        if ctx.message.author.id not in get_admins():
+        if ctx.message.author.id not in await get_admins(self.__bot):
             embed.title = "Unauthorized"
-            embed.colour = 16312092
+            embed.colour = Colors.unauthorized
             embed.description = "You don't have permissions to use this " \
                                 "command :/"
         else:
@@ -288,7 +288,7 @@ class Utility(commands.Cog):
                     self.__bot.get_all_members(), id=user_id
                 )
 
-            embed.colour = 8161513
+            embed.colour = Colors.other
             embed.title = "User information"
             embed.description = "User information from Discord API."
             embed.add_field(name="Name", value="**{0.name}**".format(user))
@@ -327,7 +327,7 @@ class Utility(commands.Cog):
                                         f"({settings.URL}/servers/{server.uuid})."
                     embed.url = f"{settings.URL}/servers/{server.uuid}/top5"
                     embed.timestamp = datetime.datetime.utcnow()
-                    embed.colour = 8161513
+                    embed.colour = Colors.other
                     embed.set_author(name=self.__bot.user.name, url=settings.URL,
                                      icon_url=self.__bot.user.avatar_url)
 
@@ -411,7 +411,7 @@ class Utility(commands.Cog):
                                     f"{member.player.uuid}/server/" \
                                     f"{member.server.uuid}"
                         embed.timestamp = datetime.datetime.utcnow()
-                        embed.colour = 1171983
+                        embed.colour = Colors.success
                         embed.set_author(name=self.__bot.user.name,
                                          url=settings.URL,
                                          icon_url=self.__bot.user.avatar_url)
@@ -461,7 +461,7 @@ class Utility(commands.Cog):
                     embed.description = f"You have successfully registered " \
                                         f"yourself. You are now shown on " \
                                         f"[{settings.URL}]({settings.URL})"
-                    embed.colour = 1171983
+                    embed.colour = Colors.success
 
                     await ctx.send(embed=embed)
 

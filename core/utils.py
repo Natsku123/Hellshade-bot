@@ -4,15 +4,28 @@ import discord
 
 from typing import Tuple
 
+from enum import Enum
 
-def get_admins():
+
+class Colors(int, Enum):
+    """
+    Color palette
+    """
+    unauthorized = 16312092
+    error = 13632027
+    success = 1171983
+    other = 8161513
+
+
+async def get_admins(bot):
     """
     Gets members of Discord Developer Team
 
     :return:
     """
     admins = []
-    for team_member in discord.AppInfo.team.members:
+    info = await bot.application_info()
+    for team_member in info.team.members:
         if team_member.membership_state == \
                 discord.TeamMembershipState.accepted:
             admins.append(team_member.id)
