@@ -580,35 +580,12 @@ def main():
     weekly_top5.start()
     patch_notes.start()
 
-    loop = asyncio.get_event_loop()
-
     def handle_sigterm(sig, frame):
         raise KeyboardInterrupt
 
     signal.signal(signal.SIGTERM, handle_sigterm)
 
-    global running
-    while running:
-        try:
-            async def login_task():
-                await bot.login(settings.BOT_TOKEN)
-                await bot.connect()
-
-            loop.run_until_complete(login_task())
-
-        except Shutdown or KeyboardInterrupt:
-            logger.info("Shutting down...")
-            for task in asyncio.all_tasks(loop):
-                task.cancel()
-
-            loop.run_until_complete(bot.logout())
-
-        finally:
-            loop.close()
-
-            running = False
-
-            logger.info("Done.")
+    bot.run(settings.BOT_TOKEN)
 
 
 if __name__ == '__main__':

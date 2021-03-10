@@ -73,7 +73,11 @@
       </v-container>
     </v-main>
 
-    <v-footer app> </v-footer>
+    <v-footer app>
+      <v-row justify="center">
+        <v-col md="auto">Hellshade-bot {{ new Date().getFullYear() }}</v-col>
+      </v-row>
+    </v-footer>
   </v-app>
 </template>
 
