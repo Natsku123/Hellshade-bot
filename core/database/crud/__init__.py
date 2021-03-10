@@ -26,7 +26,7 @@ class CRUDBase(Generic[ModelType, CreateType, UpdateType]):
         :param db: Database Session
         :return:
         """
-        query = select(func.count(self.model))
+        query = select(func.count(self.model.uuid))
         result = db.execute(query)
         return result.scalars().one()
 
