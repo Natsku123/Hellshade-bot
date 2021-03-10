@@ -261,3 +261,53 @@ class Tools(commands.Cog):
 
         embed.timestamp = datetime.utcnow()
         await ctx.send(embed=embed)
+
+    @role.command(pass_context=True, no_pm=True)
+    async def list(self, ctx):
+        """
+        Get all roles for current server
+
+        :param ctx: Context
+        :return:
+        """
+        embed = Embed()
+        embed.set_author(name=self.__bot.user.name,
+                         url=settings.URL,
+                         icon_url=self.__bot.user.avatar_url)
+        async with session_lock:
+            with Session() as session:
+
+                # Get all roles that exist
+                roles = role_crud.get_multi(
+                    session, limit=role_crud.get_count(session)
+                )
+
+                server_roles = []
+
+                # Parse roles into dict for "better performance"
+                temp_roles = {}
+                for role in roles:
+                    temp_roles[role.discord_id] = role
+
+                # Filter roles based on server
+                for r in ctx.guild.roles:
+
+                    # Skip roles that are default or premium
+                    if r.is_default or r.is_premium_subscriber:
+                        continue
+
+                    # Add to compiled list
+                    if r.id in temp_roles:
+                        server_roles.append(temp_roles[r.id])
+
+                embed.title = f"Roles for *{ctx.guild.name}*"
+                embed.colour = Colors.success
+
+                # List all roles for current server
+                for role in server_roles:
+                    embed.add_field(
+                        name=role.name, value=role.description, inline=False
+                    )
+
+        embed.timestamp = datetime.utcnow()
+        await ctx.send(embed=embed)
