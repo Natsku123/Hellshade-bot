@@ -4,7 +4,7 @@ from core.database.crud import CRUDBase, ModelType
 
 from sqlalchemy.orm import Session
 from sqlalchemy.future import select
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 
 
@@ -20,6 +20,20 @@ class CRUDRole(CRUDBase[Role, schemas.CreateRole, schemas.UpdateRole]):
         query = select(self.model).where(self.model.name == name)
         result = db.execute(query)
         return result.scalars().first()
+
+    def get_multi_by_server_uuid(
+            self, db: Session, server_uuid: UUID
+    ) -> List[ModelType]:
+        """
+        Get roles by server_uuid
+        :param db:
+        :param server_uuid:
+        :return:
+        """
+
+        query = select(self.model).where(self.model.server_uuid == server_uuid)
+        result = db.execute(query)
+        return result.scalars().all()
 
 
 class CRUDRoleEmoji(

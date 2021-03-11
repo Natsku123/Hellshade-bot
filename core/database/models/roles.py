@@ -13,6 +13,10 @@ class Role(Base):
     discord_id = Column(String, nullable=False, unique=True)
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
+    server_uuid = Column(GUID(), ForeignKey('servers.uuid'))
+    server = relationship(
+        'Server', uselist=False
+    )
     members = relationship(
         'Member', secondary=member_role_association,
         back_populates="roles"

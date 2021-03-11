@@ -7,6 +7,7 @@ class RoleBase(BaseModel):
     discord_id: str
     name: str
     description: str = ""
+    server_uuid: UUID
 
     class Config:
         orm_mode = True

@@ -30,6 +30,7 @@ class Server(ServerBase):
 
 class Role(RoleBase):
     uuid: UUID
+    server: 'Server'
     members: List['Member'] = []
 
 
