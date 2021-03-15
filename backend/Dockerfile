@@ -4,7 +4,7 @@ LABEL maintainer="Max Mecklin <max@meckl.in>"
 
 RUN apk update && \
     apk add --virtual build-deps gcc python-dev musl-dev && \
-    apk add --no-cache openssl-dev libffi-dev && \
+    apk add --no-cache openssl-dev libffi-dev g++ && \
     apk add postgresql-dev && \
     apk add netcat-openbsd && \
     apk add postgresql-client

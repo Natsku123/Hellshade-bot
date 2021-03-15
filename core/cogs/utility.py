@@ -140,7 +140,7 @@ class Utility(commands.Cog):
                                 int(db_member.server.channel)
                             ).send(embed=embed)
 
-        await self.__bot.process_commands(message)
+        #await self.__bot.process_commands(message)
 
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction, user):
