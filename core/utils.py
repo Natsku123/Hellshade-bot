@@ -3,6 +3,7 @@ import datetime
 import discord
 
 from typing import Tuple
+from core.config import logger
 
 from enum import Enum
 
@@ -30,6 +31,17 @@ async def get_admins(bot):
                 discord.TeamMembershipState.accepted:
             admins.append(team_member.id)
     return admins
+
+
+def gets_exp(member):
+    try:
+        return member.status is not discord.Status.offline and \
+               member.voice is not None and \
+               len(member.voice.channel.members) > 1 and \
+               member.voice != discord.VoiceState.self_deaf and \
+               member.voice != discord.VoiceState.afk
+    except AttributeError:
+        return False
 
 
 def progress_bar(
@@ -61,9 +73,9 @@ def level_exp(value: int) -> int:
     if value == 1:
         return 1000
     if value < 91:
-        return math.ceil(1000 + 1.2*(value-1)**2)
+        return math.ceil(1000 + 1.2 * (value - 1) ** 2)
     else:
-        return math.ceil(1000 + 1024*(value-1)**0.5)
+        return math.ceil(1000 + 1024 * (value - 1) ** 0.5)
 
 
 def next_weekday(d: datetime.datetime, weekday: int) -> datetime.datetime:

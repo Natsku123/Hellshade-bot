@@ -13,7 +13,7 @@ from core.cogs.games import Games
 from core.cogs.utility import Utility
 from core.cogs.tools import Tools
 
-from core.config import settings
+from core.config import settings, logger
 from core.database import Session, session_lock
 from core.database.utils import get_create
 from core.database.crud.levels import level as crud_level
@@ -24,15 +24,7 @@ from core.database.schemas.levels import CreateLevel
 from core.database.schemas.members import CreateMember
 from core.database.schemas.players import CreatePlayer
 from core.database.schemas.servers import CreateServer
-from core.utils import next_weekday, level_exp
-
-logger = logging.getLogger('discord')
-logger.setLevel(logging.INFO)
-handler = logging.StreamHandler()
-handler.setFormatter(
-    logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s')
-)
-logger.addHandler(handler)
+from core.utils import next_weekday, level_exp, gets_exp
 
 
 def main():
@@ -44,20 +36,18 @@ def main():
     '''
 
     # Intents for experience tracking etc.
-    intent = discord.Intents.all()
+    intents = discord.Intents.all()
 
     bot = commands.Bot(
         command_prefix=commands.when_mentioned_or('!', '/'),
         description=description,
         owner_id=settings.BOT_OWNER,
-        intent=intent
+        intents=intents
     )
 
     bot.add_cog(Utility(bot, settings.ADMINS, logger))
     bot.add_cog(Games(bot, logger))
     bot.add_cog(Tools(bot))
-
-    exp_lock = asyncio.Lock()
 
     @tasks.loop(hours=168)
     async def weekly_top5():
@@ -262,122 +252,116 @@ def main():
     @tasks.loop(minutes=1)
     async def online_experience():
         await bot.wait_until_ready()
-        async with exp_lock:
-            async with session_lock:
-                with Session() as session:
-                    leveled_up = {}
-                    for member in bot.get_all_members():
-                        if member.status is not discord.Status.offline and \
-                                member.voice is not None and \
-                                len(member.voice.channel.members) > 1 and \
-                                member.voice != discord.VoiceState.self_deaf and \
-                                member.voice != discord.VoiceState.afk:
-                            player_obj = get_create(
-                                session, crud_player, obj_in=CreatePlayer(**{
-                                    "discord_id": member.id,
-                                    "name": member.name,
-                                    "hidden": True
-                                })
-                            )
+        async with session_lock:
+            with Session() as session:
+                leveled_up = {}
+                for member in filter(gets_exp, bot.get_all_members()):
+                    player_obj = get_create(
+                        session, crud_player, obj_in=CreatePlayer(**{
+                            "discord_id": member.id,
+                            "name": member.name,
+                            "hidden": True
+                        })
+                    )
 
-                            server_obj = get_create(
-                                session, crud_server, obj_in=CreateServer(**{
-                                    "discord_id": member.guild.id,
-                                    "name": member.guild.name,
-                                    "server_exp": 0,
-                                    "channel": None
-                                })
-                            )
+                    server_obj = get_create(
+                        session, crud_server, obj_in=CreateServer(**{
+                            "discord_id": member.guild.id,
+                            "name": member.guild.name,
+                            "server_exp": 0,
+                            "channel": None
+                        })
+                    )
 
-                            member_obj = get_create(
-                                session, crud_member, obj_in=CreateMember(**{
-                                    "exp": 0,
-                                    "player_uuid": player_obj.uuid,
-                                    "server_uuid": server_obj.uuid,
-                                    "level_uuid": None
-                                })
-                            )
+                    member_obj = get_create(
+                        session, crud_member, obj_in=CreateMember(**{
+                            "exp": 0,
+                            "player_uuid": player_obj.uuid,
+                            "server_uuid": server_obj.uuid,
+                            "level_uuid": None
+                        })
+                    )
 
-                            base_exp = 5
-                            exp = math.ceil(
-                                len(member.voice.channel.members) / 4 * base_exp
-                            )
+                    base_exp = 5
+                    exp = math.ceil(
+                        len(member.voice.channel.members) / 4 * base_exp
+                    )
 
-                            if member_obj.level is not None:
-                                next_level = crud_level.get_by_value(
-                                    session, member.level.value + 1
-                                )
+                    if member_obj.level is not None:
+                        next_level = crud_level.get_by_value(
+                            session, member_obj.level.value + 1
+                        )
+                    else:
+                        next_level = crud_level.get_by_value(
+                            session, 1
+                        )
+
+                    if next_level is None and member_obj.level is not None:
+                        member_dict = {
+                            "exp": level_exp(member_obj.level.value+1),
+                            "value": member_obj.level.value+1
+                        }
+
+                        next_level = crud_level.create(
+                            CreateMember(**member_dict)
+                        )
+
+                    if member_obj.exp + exp < next_level.exp:
+                        crud_member.update(
+                            session, db_obj=member_obj, obj_in={
+                                "exp": member_obj.exp + exp
+                            }
+                        )
+                    else:
+                        member_obj = crud_member.update(
+                            session, db_obj=member_obj,
+                            obj_in={
+                                "exp":
+                                    member_obj.exp + exp - next_level.exp,
+                                "level_uuid": next_level.uuid
+                            }
+                        )
+                        if server_obj.channel is not None:
+                            if server_obj.channel in leveled_up:
+                                leveled_up[server_obj.channel].\
+                                    append(member_obj)
                             else:
-                                next_level = crud_level.get_by_value(
-                                    session, 1
-                                )
+                                leveled_up[server_obj.channel]\
+                                    = [member_obj]
+                    crud_server.update(
+                        session, db_obj=server_obj, obj_in={
+                            "name": member.guild.name,
+                            "server_exp": server_obj.server_exp + exp
+                        }
+                    )
 
-                            if next_level is None and member_obj.level is not None:
-                                member_dict = {
-                                    "exp": level_exp(member.level.value+1),
-                                    "value": member.level.value+1
-                                }
+                for channel in leveled_up:
+                    embed = discord.Embed()
+                    embed.set_author(name=bot.user.name,
+                                     url=settings.URL,
+                                     icon_url=bot.user.avatar_url)
+                    if len(leveled_up) > 1:
+                        embed.title = f"{len(leveled_up)} players leveled up!"
+                        embed.description = f"{len(leveled_up)} players " \
+                                            f"leveled up by being active on " \
+                                            f"a voice channel."
+                    else:
+                        embed.title = f"1 player leveled up!"
+                        embed.description = f"1 player leveled up by being " \
+                                            f"active on a voice channel."
 
-                                next_level = crud_level.create(
-                                    CreateMember(**member_dict)
-                                )
+                    embed.colour = 9442302
+                    for member in leveled_up[channel]:
+                        embed.add_field(
+                            name=member.player.name,
+                            value=f"Leveled up to "
+                                  f"**Level {member.level.value}**",
+                            inline=False
+                        )
 
-                            if member_obj.exp + exp < next_level.exp:
-                                crud_member.update(
-                                    session, db_obj=member_obj, obj_in={
-                                        "exp": member_obj.exp + exp
-                                    }
-                                )
-                            else:
-                                member_obj = crud_member.update(
-                                    session, db_obj=member_obj,
-                                    obj_in={
-                                        "exp":
-                                            member_obj.exp + exp - next_level.exp,
-                                        "level_uuid": next_level.uuid
-                                    }
-                                )
-                                if server_obj.channel is not None:
-                                    if server_obj.channel in leveled_up:
-                                        leveled_up[server_obj.channel].\
-                                            append(member_obj)
-                                    else:
-                                        leveled_up[server_obj.channel]\
-                                            = [member_obj]
-                            crud_server.update(
-                                session, db_obj=server_obj, obj_in={
-                                    "name": member.guild.name,
-                                    "server_exp": server_obj.server_exp + exp
-                                }
-                            )
+                    await bot.get_channel(int(channel)).send(embed=embed)
 
-                    for channel in leveled_up:
-                        embed = discord.Embed()
-                        embed.set_author(name=bot.user.name,
-                                         url=settings.URL,
-                                         icon_url=bot.user.avatar_url)
-                        if len(leveled_up) > 1:
-                            embed.title = f"{len(leveled_up)} players leveled up!"
-                            embed.description = f"{len(leveled_up)} players " \
-                                                f"leveled up by being active on " \
-                                                f"a voice channel."
-                        else:
-                            embed.title = f"1 player leveled up!"
-                            embed.description = f"1 player leveled up by being " \
-                                                f"active on a voice channel."
-
-                        embed.colour = 9442302
-                        for member in leveled_up[channel]:
-                            embed.add_field(
-                                name=member.player.name,
-                                value=f"Leveled up to "
-                                      f"**Level {member.level.value}**",
-                                inline=False
-                            )
-
-                        await bot.get_channel(int(channel)).send(embed=embed)
-
-                    logger.info("Experience calculated.")
+                logger.info("Experience calculated.")
 
     @bot.event
     async def on_ready():
