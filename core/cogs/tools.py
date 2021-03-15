@@ -21,6 +21,48 @@ class Tools(commands.Cog):
         # Start tasks
         self.role_update.start()
 
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload):
+        async with session_lock:
+            with Session() as session:
+
+                server = server_crud.get_by_discord(session, payload.guild_id)
+                if server and str(payload.message_id) == server.role_message:
+                    db_member = member_crud.get_by_discord(
+                        session, payload.member.id
+                    )
+
+                    # Stop if member not registered
+                    if db_member is None:
+                        return
+
+                    e = payload.emoji.name
+                    emoji = emoji_crud.get_by_identifier(session, e)
+
+                    found, d_id = add_to_role(
+                        session, db_member.uuid, role_uuid=emoji.role_uuid
+                    )
+
+                    # Stop if wasn't found
+                    if not found:
+                        return
+
+                    try:
+                        await payload.member.add_roles(
+                            [{"id": d_id}],
+                            reason="Added through role reaction."
+                        )
+                    except Forbidden:
+                        # TODO Logger stuff
+                        pass
+                    except HTTPException:
+                        # TODO Logger stuff
+                        pass
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_revome(self, payload):
+        pass
+
     @tasks.loop(minutes=30)
     async def role_update(self):
         """
