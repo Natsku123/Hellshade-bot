@@ -6,7 +6,7 @@ from core.database.crud.roles import role as role_crud, \
     role_emoji as emoji_crud
 from core.database.crud.members import member as member_crud
 from core.database.crud.servers import server as server_crud
-from core.database.schemas.roles import UpdateRole, CreateRole
+from core.database.schemas.roles import UpdateRole, CreateRole, CreateRoleEmoji
 from core.database.schemas.servers import UpdateServer
 from core.database.utils import get_create_ctx, add_to_role, remove_from_role
 from datetime import datetime
@@ -30,18 +30,24 @@ class Tools(commands.Cog):
         async with session_lock:
             with Session() as session:
 
-                # Get all roles that exist
-                roles = role_crud.get_multi(
-                    session, limit=role_crud.get_count(session)
-                )
-
-                # Parse roles into dict for "better performance"
-                temp_roles = {}
-                for role in roles:
-                    temp_roles[role.discord_id] = role
-
                 # Go through all visible guilds
                 for guild in self.__bot.guilds:
+
+                    server = server_crud.get_by_discord(session, guild.id)
+
+                    # Skip if server is not found
+                    if server is None:
+                        continue
+
+                    # Get all roles for server
+                    roles = role_crud.get_multi_by_server_uuid(
+                        session, server.uuid
+                    )
+
+                    temp_roles = {}
+
+                    for r in roles:
+                        temp_roles[r.discord_id] = r
 
                     # Go through all roles of a guild
                     for r in guild.roles:
@@ -55,7 +61,7 @@ class Tools(commands.Cog):
                             continue
 
                         # If the name is the same, then skip
-                        if r.name == temp_roles[r.id]:
+                        if r.name == temp_roles[r.id].name:
                             continue
 
                         role_update = UpdateRole(**{
@@ -68,7 +74,6 @@ class Tools(commands.Cog):
                         )
 
                     # Update role message if it exists
-                    server = server_crud.get_by_discord(session, guild.id)
                     if server.role_message is not None and \
                             server.role_channel is not None:
                         channel = self.__bot.get_channel(server.role_channel)
@@ -102,6 +107,7 @@ class Tools(commands.Cog):
                                             "`!role add roleName`"
 
                         converter = commands.EmojiConverter()
+                        pconverter = commands.PartialEmojiConverter()
 
                         # Get all roles that exist
                         roles = role_crud.get_multi(
@@ -139,9 +145,20 @@ class Tools(commands.Cog):
                             if ro['emoji'] is None:
                                 continue
 
-                            # Convert into actual emoji
-                            e = await converter.convert(ctx,
-                                                        ro['emoji'].identifier)
+                            try:
+                                # Convert into actual emoji
+                                e = await converter.convert(
+                                    ctx, ro['emoji'].identifier
+                                )
+                            except commands.EmojiNotFound:
+                                # Try partial emoji instead
+                                try:
+                                    e = await pconverter.convert(
+                                        ctx, ro['emoji'].identifier
+                                    )
+                                except commands.PartialEmojiConversionFailure:
+                                    # Assume that it is an unicode emoji
+                                    e = ro['emoji'].identifier
 
                             # Add to message
                             embed.add_field(
@@ -204,8 +221,8 @@ class Tools(commands.Cog):
                             reason="Added through role add command."
                         )
 
-                        embed.title = f"{ctx.author.name} has been " \
-                                      f"added to {name}!"
+                        embed.title = f"*{ctx.author.name}* has been " \
+                                      f"added to *{name}*!"
                         embed.colour = Colors.success
                     except Forbidden:
                         embed.title = "I don't have a permission to do that :("
@@ -251,8 +268,8 @@ class Tools(commands.Cog):
                             reason="Removed through role remove command."
                         )
 
-                        embed.title = f"{ctx.author.name} has been " \
-                                      f"removed from {name}!"
+                        embed.title = f"*{ctx.author.name}* has been " \
+                                      f"removed from *{name}*!"
                         embed.colour = Colors.success
                     except Forbidden:
                         embed.title = "I don't have a permission to do that :("
@@ -267,12 +284,15 @@ class Tools(commands.Cog):
         await ctx.send(embed=embed)
 
     @role.command(pass_context=True, no_pm=True)
-    async def create(self, ctx, discord_id: int, description: str):
+    async def create(
+            self, ctx, discord_id: int, description: str, emoji: str = None
+    ):
         """
         Create assignable role
         :param ctx: Context
         :param discord_id: Role Discord ID
         :param description: Description of role usage
+        :param emoji: Emoji for assignment via reactions
         :return:
         """
         embed = Embed()
@@ -282,18 +302,40 @@ class Tools(commands.Cog):
         async with session_lock:
             with Session() as session:
                 d_role = ctx.guild.get_role(discord_id)
+                db_role = role_crud.get_by_discord(session, discord_id)
+
+                # TODO Add emoji parsing
+
                 if d_role is None:
                     embed.title = "Role not found."
                     embed.colour = Colors.error
+                elif db_role is not None:
+                    embed.title = "Role already exists!"
+                    embed.colour = Colors.other
                 else:
                     role = CreateRole(**{
                         "discord_id": discord_id,
                         "name": d_role.name,
-                        "description": description
+                        "description": description,
+                        "server_uuid": get_create_ctx(
+                            ctx, session, server_crud
+                        ).uuid
                     })
 
                     db_role = role_crud.create(session, obj_in=role)
-                    embed.title = f"Role {db_role.name} created."
+                    if emoji is not None:
+                        db_e = CreateRoleEmoji(**{
+                            "identifier": emoji,
+                            "role_uuid": db_role.uuid
+                        })
+                        emoji_crud.create(session, obj_in=db_e)
+                    else:
+                        embed.description = "**Note**: Role was created" \
+                                            " without an emoji, so it " \
+                                            "cannot be assigned with " \
+                                            "reactions!"
+
+                    embed.title = f"Role *{db_role.name}* created."
                     embed.colour = Colors.success
         embed.timestamp = datetime.utcnow()
         await ctx.send(embed=embed)
@@ -327,7 +369,7 @@ class Tools(commands.Cog):
                         session, db_obj=db_role, obj_in=role_update
                     )
 
-                    embed.title = f"Role {db_role.name} updated."
+                    embed.title = f"Role *{db_role.name}* updated."
                     embed.colour = Colors.success
 
         embed.timestamp = datetime.utcnow()
@@ -353,8 +395,8 @@ class Tools(commands.Cog):
                     embed.title = "Role not found"
                     embed.colour = Colors.error
                 else:
-                    db_role = role_crud.remove(session, db_role.uuid)
-                    embed.title = f"Role {db_role.name} removed."
+                    db_role = role_crud.remove(session, uuid=db_role.uuid)
+                    embed.title = f"Role *{db_role.name}* removed."
                     embed.colour = Colors.success
 
         embed.timestamp = datetime.utcnow()
@@ -375,34 +417,19 @@ class Tools(commands.Cog):
         async with session_lock:
             with Session() as session:
 
-                # Get all roles that exist
-                roles = role_crud.get_multi(
-                    session, limit=role_crud.get_count(session)
+                # Get server data
+                server = get_create_ctx(ctx, session, server_crud)
+
+                # Get roles for server
+                roles = role_crud.get_multi_by_server_uuid(
+                    session, server.uuid
                 )
-
-                server_roles = []
-
-                # Parse roles into dict for "better performance"
-                temp_roles = {}
-                for role in roles:
-                    temp_roles[role.discord_id] = role
-
-                # Filter roles based on server
-                for r in ctx.guild.roles:
-
-                    # Skip roles that are default or premium
-                    if r.is_default or r.is_premium_subscriber:
-                        continue
-
-                    # Add to compiled list
-                    if r.id in temp_roles:
-                        server_roles.append(temp_roles[r.id])
 
                 embed.title = f"Roles for *{ctx.guild.name}*"
                 embed.colour = Colors.success
 
                 # List all roles for current server
-                for role in server_roles:
+                for role in roles:
                     embed.add_field(
                         name=role.name, value=role.description, inline=False
                     )
@@ -429,10 +456,11 @@ class Tools(commands.Cog):
                                     "`!role add roleName`"
 
                 converter = commands.EmojiConverter()
+                pconverter = commands.PartialEmojiConverter()
 
                 # Get all roles that exist
-                roles = role_crud.get_multi(
-                    session, limit=role_crud.get_count(session)
+                roles = role_crud.get_multi_by_server_uuid(
+                    session, get_create_ctx(ctx, session, server_crud).uuid
                 )
 
                 # Parse roles into dict for "better performance"
@@ -462,17 +490,29 @@ class Tools(commands.Cog):
 
                 for r in server_roles:
 
-                    # Skip roles without emojis
-                    if r['emoji'] is None:
-                        continue
+                    if r['emoji'] is not None:
 
-                    # Convert into actual emoji
-                    e = await converter.convert(ctx, r['emoji'].identifier)
+                        try:
+                            # Convert into actual emoji
+                            e = await converter.convert(
+                                ctx, r['emoji'].identifier
+                            )
+                        except commands.EmojiNotFound:
+                            # Try partial emoji instead
+                            try:
+                                e = await pconverter.convert(
+                                    ctx, r['emoji'].identifier
+                                )
+                            except commands.PartialEmojiConversionFailure:
+                                # Assume that it is an unicode emoji
+                                e = r['emoji'].identifier
 
-                    # Add to message
-                    embed.add_field(
-                        name=str(e), value=r['role'].name, inline=False
-                    )
+                        # Add to message
+                        embed.add_field(
+                            name=f"{str(e)} - {r['role'].name}",
+                            value=r['role'].description,
+                            inline=False
+                        )
 
                 # Send message
                 role_message = await ctx.send(embed=embed)
