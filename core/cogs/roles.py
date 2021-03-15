@@ -74,8 +74,10 @@ class Roles(commands.Cog):
                         return
 
                     try:
+                        role = self.__bot.get_guild(payload.guild_id)\
+                            .get_role(int(d_id))
                         await payload.member.add_roles(
-                            {"id": int(d_id)},
+                            role,
                             reason="Added through role reaction."
                         )
                     except Forbidden:
@@ -139,8 +141,10 @@ class Roles(commands.Cog):
                         return
 
                     try:
+                        role = self.__bot.get_guild(payload.guild_id) \
+                            .get_role(int(d_id))
                         await payload.member.remove_roles(
-                            {"id": int(d_id)},
+                            role,
                             reason="Removed through role reaction."
                         )
                     except Forbidden:
@@ -347,8 +351,9 @@ class Roles(commands.Cog):
                                         "it is not assignable."
                 else:
                     try:
+                        role = ctx.guild.get_role(int(d_id))
                         await ctx.author.add_roles(
-                            {"id": int(d_id)},
+                            role,
                             reason="Added through role add command."
                         )
 
@@ -394,8 +399,9 @@ class Roles(commands.Cog):
                                         "it is not assignable."
                 else:
                     try:
+                        role = ctx.guild.get_role(int(d_id))
                         await ctx.author.remove_roles(
-                            {"id": int(d_id)},
+                            role,
                             reason="Removed through role remove command."
                         )
 
