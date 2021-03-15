@@ -1,6 +1,6 @@
 from discord.ext import commands, tasks
 from discord import Embed, Forbidden, HTTPException, utils
-from core.config import settings
+from core.config import settings, logger
 from core.database import Session, session_lock
 from core.database.crud.roles import role as role_crud, \
     role_emoji as emoji_crud
@@ -55,11 +55,13 @@ class Roles(commands.Cog):
                             reason="Added through role reaction."
                         )
                     except Forbidden:
-                        # TODO Logger stuff
-                        pass
+                        logger.error(
+                            "Forbidden: Not enough permissions to manage roles."
+                        )
                     except HTTPException:
-                        # TODO Logger stuff
-                        pass
+                        logger.error(
+                            "HTTPException: Something went wrong while changing roles"
+                        )
 
     @commands.Cog.listener()
     async def on_raw_reaction_revome(self, payload):
@@ -94,11 +96,13 @@ class Roles(commands.Cog):
                             reason="Removed through role reaction."
                         )
                     except Forbidden:
-                        # TODO Logger stuff
-                        pass
+                        logger.error(
+                            "Forbidden: Not enough permissions to manage roles."
+                        )
                     except HTTPException:
-                        # TODO Logger stuff
-                        pass
+                        logger.error(
+                            "HTTPException: Something went wrong while changing roles"
+                        )
 
     @tasks.loop(minutes=30)
     async def role_update(self):
