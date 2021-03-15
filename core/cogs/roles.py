@@ -75,7 +75,7 @@ class Roles(commands.Cog):
 
                     try:
                         await payload.member.add_roles(
-                            [{"id": d_id}],
+                            {"id": int(d_id)},
                             reason="Added through role reaction."
                         )
                     except Forbidden:
@@ -140,7 +140,7 @@ class Roles(commands.Cog):
 
                     try:
                         await payload.member.remove_roles(
-                            [{"id": d_id}],
+                            {"id": int(d_id)},
                             reason="Removed through role reaction."
                         )
                     except Forbidden:
@@ -348,7 +348,7 @@ class Roles(commands.Cog):
                 else:
                     try:
                         await ctx.author.add_roles(
-                            [{"id": d_id}],
+                            {"id": int(d_id)},
                             reason="Added through role add command."
                         )
 
@@ -395,7 +395,7 @@ class Roles(commands.Cog):
                 else:
                     try:
                         await ctx.author.remove_roles(
-                            [{"id": d_id}],
+                            {"id": int(d_id)},
                             reason="Removed through role remove command."
                         )
 
