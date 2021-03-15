@@ -6,6 +6,7 @@ from core.database.crud.roles import role as role_crud, \
     role_emoji as emoji_crud
 from core.database.crud.members import member as member_crud
 from core.database.crud.servers import server as server_crud
+from core.database.crud.players import player as player_crud
 from core.database.schemas.roles import UpdateRole, CreateRole, CreateRoleEmoji
 from core.database.schemas.servers import UpdateServer
 from core.database.utils import get_create_ctx, add_to_role, remove_from_role
@@ -28,9 +29,10 @@ class Tools(commands.Cog):
 
                 server = server_crud.get_by_discord(session, payload.guild_id)
                 if server and str(payload.message_id) == server.role_message:
-                    db_member = member_crud.get_by_discord(
+                    db_player = player_crud.get_by_discord(
                         session, payload.member.id
                     )
+                    db_member = member_crud.get(session, db_player.uuid)
 
                     # Stop if member not registered
                     if db_member is None:
@@ -66,9 +68,10 @@ class Tools(commands.Cog):
 
                 server = server_crud.get_by_discord(session, payload.guild_id)
                 if server and str(payload.message_id) == server.role_message:
-                    db_member = member_crud.get_by_discord(
+                    db_player = player_crud.get_by_discord(
                         session, payload.member.id
                     )
+                    db_member = member_crud.get(session, db_player.uuid)
 
                     # Stop if member not registered
                     if db_member is None:
