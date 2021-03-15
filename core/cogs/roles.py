@@ -32,14 +32,34 @@ class Roles(commands.Cog):
                     db_player = player_crud.get_by_discord(
                         session, payload.member.id
                     )
-                    db_member = member_crud.get(session, db_player.uuid)
+
+                    # Stop if player not registered
+                    if db_player is None:
+                        logger.error(
+                            f"Player not found for {payload.member.id}."
+                        )
+                        return
+
+                    db_member = member_crud.get_by_ids(
+                        session, db_player.uuid, server.uuid
+                    )
 
                     # Stop if member not registered
                     if db_member is None:
+                        logger.error(
+                            f"Member not found for {payload.member.id}."
+                        )
                         return
 
                     e = payload.emoji.name
                     emoji = emoji_crud.get_by_identifier(session, e)
+
+                    if not emoji:
+                        logger.error(
+                            f"Emoji requested with {e} not "
+                            f"found on {server.name}."
+                        )
+                        return
 
                     found, d_id = add_to_role(
                         session, db_member.uuid, role_uuid=emoji.role_uuid
@@ -47,6 +67,10 @@ class Roles(commands.Cog):
 
                     # Stop if wasn't found
                     if not found:
+                        logger.error(
+                            f"Role not found for emoji {emoji.identifier} "
+                            f"on {server.name}."
+                        )
                         return
 
                     try:
@@ -73,14 +97,34 @@ class Roles(commands.Cog):
                     db_player = player_crud.get_by_discord(
                         session, payload.member.id
                     )
-                    db_member = member_crud.get(session, db_player.uuid)
+
+                    # Stop if player not registered
+                    if db_player is None:
+                        logger.error(
+                            f"Player not found for {payload.member.id}."
+                        )
+                        return
+
+                    db_member = member_crud.get_by_ids(
+                        session, db_player.uuid, server.uuid
+                    )
 
                     # Stop if member not registered
                     if db_member is None:
+                        logger.error(
+                            f"Member not found for {payload.member.id}."
+                        )
                         return
 
                     e = payload.emoji.name
                     emoji = emoji_crud.get_by_identifier(session, e)
+
+                    if not emoji:
+                        logger.error(
+                            f"Emoji requested with {e} not "
+                            f"found on {server.name}."
+                        )
+                        return
 
                     found, d_id = remove_from_role(
                         session, db_member.uuid, role_uuid=emoji.role_uuid
@@ -88,6 +132,10 @@ class Roles(commands.Cog):
 
                     # Stop if wasn't found
                     if not found:
+                        logger.error(
+                            f"Role not found for emoji {emoji.identifier} "
+                            f"on {server.name}."
+                        )
                         return
 
                     try:
