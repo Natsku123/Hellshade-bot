@@ -458,59 +458,38 @@ class Tools(commands.Cog):
                 converter = commands.EmojiConverter()
                 pconverter = commands.PartialEmojiConverter()
 
-                # Get all roles that exist
+                # Get all roles on the server
                 roles = role_crud.get_multi_by_server_uuid(
                     session, get_create_ctx(ctx, session, server_crud).uuid
                 )
 
-                # Parse roles into dict for "better performance"
-                temp_roles = {}
-                for role in roles:
-                    temp_roles[role.discord_id] = {
-                        'role': role,
-                        'emoji': None
-                    }
+                for r in roles:
 
-                server_roles = []
+                    emoji = emoji_crud.get_by_role(
+                        session, r.uuid
+                    )
 
-                # Filter roles based on server
-                for r in ctx.guild.roles:
-
-                    # Skip roles that are default or premium
-                    if r.is_default or r.is_premium_subscriber:
-                        continue
-
-                    # Add to compiled list
-                    if r.id in temp_roles:
-                        emoji = emoji_crud.get_by_role(
-                            session, temp_roles[r.id]['role'].uuid
-                        )
-                        temp_roles[r.id]['emoji'] = emoji
-                        server_roles.append(temp_roles[r.id])
-
-                for r in server_roles:
-
-                    if r['emoji'] is not None:
+                    if emoji is not None:
 
                         try:
                             # Convert into actual emoji
                             e = await converter.convert(
-                                ctx, r['emoji'].identifier
+                                ctx, emoji.identifier
                             )
                         except commands.EmojiNotFound:
                             # Try partial emoji instead
                             try:
                                 e = await pconverter.convert(
-                                    ctx, r['emoji'].identifier
+                                    ctx, emoji.identifier
                                 )
                             except commands.PartialEmojiConversionFailure:
                                 # Assume that it is an unicode emoji
-                                e = r['emoji'].identifier
+                                e = emoji.identifier
 
                         # Add to message
                         embed.add_field(
-                            name=f"{str(e)} - {r['role'].name}",
-                            value=r['role'].description,
+                            name=f"{str(e)} - {r.name}",
+                            value=r.description,
                             inline=False
                         )
 
