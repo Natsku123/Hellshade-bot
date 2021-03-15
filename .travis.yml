@@ -21,3 +21,6 @@ jobs:
       script:
           - docker build -t "$REGISTRY/$REPO:latest" .
           - docker push "$REGISTRY/$REPO:latest"
+          - cd backend/
+          - docker build -t "$REGISTRY/$REPO-backend:latest" .
+          - docker push "$REGISTRY/$REPO-backend:latest"
