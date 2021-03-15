@@ -25,7 +25,7 @@ class Role(Base):
 
 class RoleEmoji(Base):
     __tablename__ = "roleemojis"
-    uuid = Column(GUID(), primary_key=True, default=uuid.uuid4())
+    uuid = Column(GUID(), primary_key=True, default=uuid.uuid4)
     identifier = Column(String, nullable=False)
     role_uuid = Column(GUID(), ForeignKey('roles.uuid'), unique=True)
     role = relationship(
