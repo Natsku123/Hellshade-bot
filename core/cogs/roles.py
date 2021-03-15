@@ -15,7 +15,7 @@ from datetime import datetime
 from core.utils import Colors
 
 
-class Tools(commands.Cog):
+class Roles(commands.Cog):
     def __init__(self, bot):
         self.__bot = bot
 
