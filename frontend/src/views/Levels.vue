@@ -20,11 +20,14 @@
 
 <script>
 import LevelsExpChart from "@/components/LevelsExpChart";
+import { reloadMixin } from "@/mixins/reloadMixin";
+
 export default {
   name: "Levels",
   components: {
     LevelsExpChart
   },
+  mixins: [reloadMixin],
   data: () => ({
     chartOptions: {
       scales: {

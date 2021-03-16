@@ -28,10 +28,12 @@
 import { client } from "@/utils";
 import { gql } from "graphql-request";
 import MemberCard from "@/components/MemberCard";
+import { reloadMixin } from "@/mixins/reloadMixin";
 
 export default {
   name: "Server",
   components: { MemberCard },
+  mixins: [reloadMixin],
   data: () => ({
     server: {
       name: "Loading...",
@@ -124,9 +126,6 @@ export default {
           .slice(0, 10);
       });
     }
-  },
-  mounted() {
-    this.loadContent();
   }
 };
 </script>

@@ -3,8 +3,11 @@
 </template>
 
 <script>
+import { reloadMixin } from "@/mixins/reloadMixin";
+
 export default {
   name: "Members",
-  components: {}
+  components: {},
+  mixins: [reloadMixin]
 };
 </script>

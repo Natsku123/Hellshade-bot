@@ -27,12 +27,14 @@
 import { client } from "@/utils";
 import { gql } from "graphql-request";
 import ServerMembersChart from "@/components/ServerMembersChart";
+import { reloadMixin } from "@/mixins/reloadMixin";
 
 export default {
   name: "Servers",
   components: {
     ServerMembersChart
   },
+  mixins: [reloadMixin],
   data: () => ({
     servers: [],
     chartOptions: {
