@@ -43,7 +43,8 @@ export default {
             position: "right",
             ticks: {
               min: 0,
-              max: 15
+              max: 15,
+              fontColor: this.$vuetify.theme.dark ? "#FFFFFF" : "#000000"
             }
           }
         ]

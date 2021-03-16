@@ -44,39 +44,32 @@ export default {
             id: "A",
             type: "linear",
             position: "left"
-          },
-          {
-            id: "B",
-            type: "linear",
-            position: "right",
-            ticks: {
-              min: 0,
-              max: 15
-            }
           }
         ]
       }
     }
   }),
-  mounted() {
-    const query = gql`
-      {
-        allServers {
-          edges {
-            node {
-              uuid
-              name
+  methods: {
+    loadContent() {
+      const query = gql`
+        {
+          allServers {
+            edges {
+              node {
+                uuid
+                name
+              }
             }
           }
         }
-      }
-    `;
-    client.request(query).then(data => {
-      data["allServers"]["edges"].forEach(n => {
-        n.node.uuid = n.node.uuid.substring(1, n.node.uuid.length - 1);
+      `;
+      client.request(query).then(data => {
+        data["allServers"]["edges"].forEach(n => {
+          n.node.uuid = n.node.uuid.substring(1, n.node.uuid.length - 1);
+        });
+        this.servers = data["allServers"]["edges"];
       });
-      this.servers = data["allServers"]["edges"];
-    });
+    }
   }
 };
 </script>
