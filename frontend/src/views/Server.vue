@@ -9,7 +9,15 @@
       ><v-col><h2>Top 10</h2></v-col></v-row
     >
     <v-row>
-      <v-col md="3" v-for="member in top10" :key="member.uuid" class="">
+      <v-col
+        xs="12"
+        sm="12"
+        md="4"
+        lg="3"
+        v-for="member in top10"
+        :key="member.uuid"
+        class=""
+      >
         <MemberCard :member="member" />
       </v-col>
     </v-row>
@@ -17,7 +25,15 @@
       ><v-col><h2>All Members</h2></v-col></v-row
     >
     <v-row>
-      <v-col md="3" v-for="member in members" :key="member.uuid" class="">
+      <v-col
+        xs="12"
+        sm="12"
+        md="4"
+        lg="3"
+        v-for="member in members"
+        :key="member.uuid"
+        class=""
+      >
         <MemberCard :member="member" />
       </v-col>
     </v-row>

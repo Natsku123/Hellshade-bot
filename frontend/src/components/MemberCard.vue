@@ -1,23 +1,24 @@
 <template>
   <v-card>
     <v-card-title class="title">{{ member.player.name }}</v-card-title>
-    <v-card-subtitle v-if="member.server">{{
-      member.server.name
-    }}</v-card-subtitle>
-    <div v-if="nextLevel" class="text-left px-2">
+    <v-card-subtitle v-if="member.level" class="text-left">
+      Level {{ member.level.value }} <span v-if="member.server"> at <strong>{{ member.server.name }}</strong></span>
+    </v-card-subtitle>
+    <v-card-subtitle v-else class="text-left">
+      Level 0 <span v-if="member.server"> at <strong>{{ member.server.name }}</strong></span>
+    </v-card-subtitle>
+    <div v-if="nextLevel" class="text-left px-4">
       <v-row>
-        <v-col v-if="member.level" md="auto"
-          ><strong>Level {{ member.level.value }}</strong></v-col
-        >
-        <v-col v-else md="auto">Level 0</v-col>
+        <v-col md="auto" class="pb-0">
+          <strong>{{ member.exp }} exp</strong>
+        </v-col>
         <v-spacer />
-        <v-col md="auto"
-          >{{ nextLevel.exp - member.exp }} exp to
-          <strong>Level {{ nextLevel.value }}</strong></v-col
-        >
+        <v-col md="auto" class="pb-0">
+          {{ nextLevel.exp - member.exp }} exp to <strong>Level {{ nextLevel.value }}</strong>
+        </v-col>
       </v-row>
       <v-row>
-        <v-col>
+        <v-col class="pt-0">
           <v-progress-linear
             rounded
             height="15"
@@ -29,11 +30,6 @@
           </v-progress-linear>
         </v-col>
       </v-row>
-      <v-row
-        ><v-col md="auto"
-          ><strong>{{ member.exp }} exp</strong></v-col
-        ></v-row
-      >
     </div>
   </v-card>
 </template>
@@ -83,4 +79,5 @@ export default {
 };
 </script>
 
-<style scoped></style>
+<style scoped>
+</style>

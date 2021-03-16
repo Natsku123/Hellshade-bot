@@ -67,6 +67,68 @@
       </v-row>
     </v-navigation-drawer>
 
+    <v-app-bar dense flat class="hidden-md-and-up">
+      <v-app-bar-nav-icon @click="mobileDrawer = true">
+        <v-icon>mdi-menu</v-icon>
+      </v-app-bar-nav-icon>
+      <v-app-bar-title>Hellshade-bot</v-app-bar-title>
+    </v-app-bar>
+    <v-navigation-drawer
+      class="hidden-md-and-up"
+      v-model="mobileDrawer"
+      absolute
+      temporary
+    >
+      <v-list nav dense>
+        <v-list-item-group v-model="mobileGroup">
+          <v-list-item link to="/">
+            <v-list-item-icon><v-icon>mdi-home</v-icon></v-list-item-icon>
+            <v-list-item-content>
+              <v-list-item-title>Home</v-list-item-title>
+            </v-list-item-content>
+          </v-list-item>
+
+          <v-list-item link to="/about">
+            <v-list-item-icon><v-icon>mdi-information</v-icon></v-list-item-icon>
+            <v-list-item-content>
+              <v-list-item-title>About</v-list-item-title>
+            </v-list-item-content>
+          </v-list-item>
+
+          <v-list-item link to="/servers">
+            <v-list-item-icon><v-icon>mdi-server</v-icon></v-list-item-icon>
+            <v-list-item-content>
+              <v-list-item-title>Servers</v-list-item-title>
+            </v-list-item-content>
+          </v-list-item>
+
+          <v-list-item link to="/levels">
+            <v-list-item-icon><v-icon>mdi-star</v-icon></v-list-item-icon>
+            <v-list-item-content>
+              <v-list-item-title>Levels</v-list-item-title>
+            </v-list-item-content>
+          </v-list-item>
+
+          <v-list-item link to="/members">
+            <v-list-item-icon>
+              <v-icon>mdi-account-group</v-icon>
+            </v-list-item-icon>
+            <v-list-item-content>
+              <v-list-item-title>Members</v-list-item-title>
+            </v-list-item-content>
+          </v-list-item>
+          <v-list-item link href="https://github.com/Natsku123/Hellshade-bot">
+            <v-list-item-icon>
+              <v-icon>mdi-github</v-icon>
+            </v-list-item-icon>
+            <v-list-item-content>
+              <v-list-item-title>Github</v-list-item-title>
+            </v-list-item-content>
+          </v-list-item>
+        </v-list-item-group>
+      </v-list>
+    </v-navigation-drawer>
+
     <v-main>
       <v-container fluid>
         <router-view></router-view>
@@ -84,6 +146,10 @@
 <script>
 export default {
   name: "App",
+  data: () => ({
+    mobileDrawer: false,
+    mobileGroup: null
+  }),
   computed: {
     dark: {
       set(value) {
