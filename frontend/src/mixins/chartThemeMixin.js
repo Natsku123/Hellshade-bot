@@ -1,5 +1,7 @@
 const darkColor = "rgba(255,255,255,0.8)";
+const darkColor2 = "rgba(255,255,255, 0.5)";
 const lightColor = "rgba(0,0,0, 0.8)";
+const lightColor2 = "rgba(0,0,0, 0.5)";
 
 /*
 Change color based on theme
@@ -8,21 +10,32 @@ const axesTheme = (axes, dark) => {
   if (!axes) {
     axes = [{}];
   }
+  let n = 1;
   axes.forEach(y => {
+    let d;
+    let l;
+    if (n === 1) {
+      d = darkColor;
+      l = lightColor;
+    } else {
+      d = darkColor2;
+      l = lightColor2;
+    }
+    n++;
     if (y.ticks) {
-      y.ticks.fontColor = dark ? darkColor : lightColor;
+      y.ticks.fontColor = dark ? d : l;
     } else {
       y.ticks = {
-        fontColor: dark ? darkColor : lightColor
+        fontColor: dark ? d : l
       };
     }
 
     if (!y.gridLines) {
       y.gridLines = {
-        color: dark ? darkColor : lightColor
+        color: dark ? d : l
       };
     } else {
-      y.gridLines.color = dark ? darkColor : lightColor;
+      y.gridLines.color = dark ? d : l;
     }
   });
   return axes;

@@ -2,12 +2,13 @@
 import { Line, mixins } from "vue-chartjs";
 import { gql } from "graphql-request";
 import { client, hexToRGB } from "@/utils";
+import { chartThemeMixin } from "@/mixins/chartThemeMixin";
 const { reactiveData } = mixins;
 
 export default {
   extends: Line,
   name: "LevelsExpChart",
-  mixins: [reactiveData],
+  mixins: [reactiveData, chartThemeMixin],
   props: ["options", "range"],
   data: () => ({
     rawData: {}
