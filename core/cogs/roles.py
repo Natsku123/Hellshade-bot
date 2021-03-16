@@ -219,11 +219,7 @@ class Roles(commands.Cog):
 
                         # Channel must not be bloated with messages
                         message = utils.find(
-                            lambda m: (m.author.id == self.__bot.user.id and
-                                       len(m.embeds) > 0 and
-                                       m.embeds[0].title.startswith(
-                                           "Assignable roles for"
-                                       )),
+                            lambda m: (m.id == server.role_message),
                             await channel.history(limit=10).flatten()
                         )
 
@@ -244,60 +240,33 @@ class Roles(commands.Cog):
                         converter = commands.EmojiConverter()
                         pconverter = commands.PartialEmojiConverter()
 
-                        # Get all roles that exist
-                        roles = role_crud.get_multi(
-                            session, limit=role_crud.get_count(session)
+                        # Get all roles of a server
+                        roles = role_crud.get_multi_by_server_uuid(
+                            session, server.uuid
                         )
 
-                        # Parse roles into dict for "better performance"
-                        temp_roles = {}
-                        for role in roles:
-                            temp_roles[role.discord_id] = {
-                                'role': role,
-                                'emoji': None
-                            }
+                        for ro in roles:
 
-                        server_roles = []
-
-                        # Filter roles based on server
-                        for r in message.guild.roles:
-
-                            # Skip roles that are default or premium
-                            if r.is_default or r.is_premium_subscriber:
-                                continue
-
-                            # Add to compiled list
-                            if r.id in temp_roles:
-                                emoji = emoji_crud.get_by_role(
-                                    session, temp_roles[r.id]['role'].uuid
-                                )
-                                temp_roles[r.id]['emoji'] = emoji
-                                server_roles.append(temp_roles[r.id])
-
-                        for ro in server_roles:
-
-                            # Skip roles without emojis
-                            if ro['emoji'] is None:
-                                continue
+                            emoji = emoji_crud.get_by_role(session, ro.uuid)
 
                             try:
                                 # Convert into actual emoji
                                 e = await converter.convert(
-                                    ctx, ro['emoji'].identifier
+                                    ctx, emoji.identifier
                                 )
                             except commands.EmojiNotFound:
                                 # Try partial emoji instead
                                 try:
                                     e = await pconverter.convert(
-                                        ctx, ro['emoji'].identifier
+                                        ctx, emoji.identifier
                                     )
                                 except commands.PartialEmojiConversionFailure:
                                     # Assume that it is an unicode emoji
-                                    e = ro['emoji'].identifier
+                                    e = emoji.identifier
 
                             # Add to message
                             embed.add_field(
-                                name=str(e), value=ro['role'].name,
+                                name=str(e), value=ro.name,
                                 inline=False
                             )
                         await message.edit(embed=embed)
