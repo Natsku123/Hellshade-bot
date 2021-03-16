@@ -24,3 +24,6 @@ jobs:
           - cd backend/
           - docker build -t "$REGISTRY/$REPO-backend:latest" .
           - docker push "$REGISTRY/$REPO-backend:latest"
+          - cd ../frontend/
+          - docker build -t "$REGISTRY/$REPO-frontend:latest" .
+          - docker push "$REGISTRY/$REPO-frontend:latest"
