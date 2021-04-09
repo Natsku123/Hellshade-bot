@@ -8,6 +8,13 @@ import random
 import discord
 from pathlib import Path
 
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+
 
 from core.config import settings, logger
 
@@ -17,15 +24,34 @@ class Games(commands.Cog):
         self.__bot = bot
 
         self.__heroes = []
-        response = requests.get("http://www.dota2.com/heroes/")
-        soup = bs4.BeautifulSoup(response.text, "html.parser")
-        heroes = soup.select("#filterName")[0].select("option")
-        for hero in heroes:
-            if hero.attrs['value'] != "":
-                self.__heroes.append({
-                    "name": hero.contents[0],
-                    "value": hero.attrs['value']
-                })
+
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--no-sandbox")
+
+        driver = webdriver.Chrome(
+            options=chrome_options
+        )
+        driver.get("http://www.dota2.com/heroes/")
+
+        elements = WebDriverWait(driver, 10).until(
+            EC.visibility_of_all_elements_located((
+                By.XPATH, "//a[starts-with(@href, '/hero/')]"
+            )))
+
+        heroes = [e.find_element_by_xpath(
+            ".//div[starts-with(@class, 'herogridpage_HeroName_')]"
+        ).get_attribute("innerHTML") for e in elements]
+
+        links = [e.get_attribute('style').split("\"")[1] for e in elements]
+
+        for i, hero in enumerate(heroes):
+            self.__heroes.append({
+                "name": hero,
+                "link": links[i]
+            })
+
+        driver.quit()
 
         self.patch_notes.start()
 
@@ -186,7 +212,7 @@ class Games(commands.Cog):
         index = random.randint(0, len(self.__heroes))
         hero = self.__heroes[index]
         hero_name = hero['name']
-        hero_image = f"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/heroes/{hero['value']}_full.png?v=6120190?v=6120190"
+        hero_image = hero['link']
 
         embed = discord.Embed()
         embed.title = "You randomed..."

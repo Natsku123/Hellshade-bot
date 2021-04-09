@@ -7,3 +7,4 @@ venv/
 __pycache__/
 dump.py
 docker-compose-dev.yml
+chromedriver

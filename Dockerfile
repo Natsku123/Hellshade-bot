@@ -2,7 +2,10 @@ FROM python:3.9-alpine
 
 LABEL maintainer="Max Mecklin <max@meckl.in>"
 
-RUN apk update && apk add python3-dev gcc libc-dev postgresql-dev build-base
+RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/community" > /etc/apk/repositories
+RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories
+
+RUN apk update && apk add python3-dev gcc libc-dev postgresql-dev build-base curl chromium chromium-chromedriver
 
 COPY . /bot
 
