@@ -351,8 +351,7 @@ class Games(commands.Cog):
 
             # Send messages to configured channel
             # TODO make dynamic
-            # channel = self.__bot.get_channel(367057131750293514)
-            channel = self.__bot.get_channel(790926909244047370)
+            channel = self.__bot.get_channel(367057131750293514)
             for message in new_content:
                 await channel.send(message)
                 await asyncio.sleep(0.5)
