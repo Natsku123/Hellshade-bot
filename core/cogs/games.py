@@ -2,14 +2,15 @@ from discord.ext import commands, tasks
 import asyncio
 import time
 import datetime
-import requests
-import bs4
 import random
 import discord
 from pathlib import Path
 
+from concurrent.futures import ThreadPoolExecutor
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.common.exceptions import NoSuchElementException
 
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
@@ -19,180 +20,306 @@ from selenium.webdriver.support import expected_conditions as EC
 from core.config import settings, logger
 
 
+selenium_exec = ThreadPoolExecutor(2)
+
+loop = asyncio.get_event_loop()
+
+
+def get_heroes():
+    final = []
+
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+
+    driver = webdriver.Chrome(
+        options=chrome_options
+    )
+    driver.get("http://www.dota2.com/heroes/")
+
+    elements = WebDriverWait(driver, 10).until(
+        EC.visibility_of_all_elements_located((
+            By.XPATH, "//a[starts-with(@href, '/hero/')]"
+        )))
+
+    heroes = [e.find_element_by_xpath(
+        ".//div[starts-with(@class, 'herogridpage_HeroName_')]"
+    ).get_attribute("innerHTML") for e in elements]
+
+    links = [e.get_attribute('style').split("\"")[1] for e in elements]
+
+    for i, hero in enumerate(heroes):
+        final.append({
+            "name": hero,
+            "link": links[i]
+        })
+
+    driver.quit()
+
+    return final
+
+
+def get_news_update():
+    lines = []
+
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+
+    driver = webdriver.Chrome(
+        options=chrome_options
+    )
+    driver.get("https://www.dota2.com/news/updates")
+
+    content = WebDriverWait(driver, 10).until(
+        EC.visibility_of_all_elements_located((
+            By.XPATH,
+            ".//div[starts-with(@class, 'updatecapsule_UpdateCapsule_')]"
+        )))
+
+    if len(content) > 0:
+        content = content[0]
+
+    try:
+        date = content.find_element_by_xpath(
+            ".//div[starts-with(@class, 'updatecapsule_Date_')]").get_attribute(
+            'innerHTML')
+        date = datetime.datetime.strptime(date, "%B %d, %Y")
+
+        date_file = Path('/files/last_news')
+
+        if date_file.exists():
+            with open('/files/last_news', "r") as t_file:
+                last_date = datetime.datetime.fromisoformat(t_file.read())
+        else:
+            last_date = ""
+
+        if last_date == "" or date > last_date:
+            logger.info("New news article found!")
+
+            with open('/files/last_news', "w") as t_file:
+                t_file.write(date.isoformat())
+
+            title = content.find_element_by_xpath(
+                ".//div[starts-with(@class, 'updatecapsule_Title_')]").get_attribute(
+                'innerHTML')
+
+            desc = content.find_element_by_xpath(
+                ".//div[starts-with(@class, 'updatecapsule_Desc_')]").text
+
+            lines.append(f"__New update article__: __**{title}**__\n")
+            lines.append(f"Released: __{date.date().isoformat()}__\n\n")
+            for i in desc.split("\n"):
+                lines.append(f" - {i}\n")
+
+    except NoSuchElementException:
+        driver.quit()
+        return []
+
+    driver.quit()
+
+    return lines
+
+
+def get_patchnotes():
+    lines = []
+
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+
+    driver = webdriver.Chrome(
+        options=chrome_options
+    )
+    driver.get("http://www.dota2.com/patches/")
+
+    content = WebDriverWait(driver, 10).until(
+        EC.visibility_of_all_elements_located((
+            By.ID, "dota_react_root"
+        )))
+
+    if len(content) > 0:
+        content = content[0]
+
+    title = content.find_element_by_xpath(
+        ".//div[starts-with(@class, 'patchnotespage_NotesTitle_')]").get_attribute(
+        'innerHTML')
+
+    title_file = Path('/files/last_title')
+
+    if title_file.exists():
+        with open('/files/last_title', "r") as t_file:
+            last_title = t_file.read()
+    else:
+        last_title = ""
+
+    if title > last_title:
+
+        logger.info("New patch notes found!")
+
+        with open('/files/last_title', "w") as t_file:
+            t_file.write(title)
+
+        # Get base elements for each section
+        generic_notes = content.find_elements_by_xpath(
+            ".//div[starts-with(@class, 'patchnotespage_PatchNoteGeneric_')]"
+        )
+        item_notes = content.find_elements_by_xpath(
+            ".//div[starts-with(@class, 'patchnotespage_PatchNoteItem_')]"
+        )
+        hero_notes = content.find_elements_by_xpath(
+            ".//div[starts-with(@class, 'patchnotespage_PatchNoteHero_')]"
+        )
+
+        # Parse generic notes
+        parsed_generic_notes = [e.find_element_by_xpath(
+            ".//div[starts-with(@class, 'patchnotespage_Note_')]"
+        ).get_attribute('innerHTML') for e in generic_notes]
+
+        parsed_item_notes = {}
+
+        # Parse items
+        for i in item_notes:
+            i_name = i.find_element_by_xpath(
+                ".//div[starts-with(@class, 'patchnotespage_ItemName_')]"
+            ).get_attribute('innerHTML')
+            i_content = i.find_elements_by_xpath(
+                ".//div[starts-with(@class, 'patchnotespage_Note_')]"
+            )
+            parsed_item_notes[i_name] = [
+                e.get_attribute('innerHTML') for e in i_content
+            ]
+
+        parsed_hero_notes = {}
+
+        # Parse heroes
+        for h in hero_notes:
+            h_name = h.find_element_by_xpath(
+                ".//div[starts-with(@class, 'patchnotespage_HeroName_')]"
+            ).get_attribute('innerHTML')
+            h_abilities = h.find_elements_by_xpath(
+                ".//div[starts-with(@class, 'patchnotespage_AbilityNote_')]"
+            )
+            h_generic = h.find_elements_by_xpath(
+                ".//div[starts-with(@class, 'patchnotespage_Note_')]"
+            )
+
+            try:
+                h_talents = h.find_element_by_xpath(
+                    ".//div[starts-with(@class, 'patchnotespage_TalentNotes_')]"
+                ).find_elements_by_xpath(
+                    ".//div[starts-with(@class, 'patchnotespage_Note_')]"
+                )
+            except NoSuchElementException:
+                h_talents = []
+
+            h_parsed_generic = [e.get_attribute('innerHTML') for e in
+                                h_generic]
+            h_parsed_talents = [e.get_attribute('innerHTML') for e in
+                                h_talents]
+
+            # Remove duplicates from generic
+            for n in h_parsed_talents:
+                if n in h_parsed_generic:
+                    h_parsed_generic.remove(n)
+
+            h_parsed_abilities = {}
+
+            # Parse abilities
+            for a in h_abilities:
+                a_name = a.find_element_by_xpath(
+                    ".//div[starts-with(@class, 'patchnotespage_AbilityName_')]"
+                ).get_attribute('innerHTML')
+                a_notes = a.find_elements_by_xpath(
+                    ".//div[starts-with(@class, 'patchnotespage_Note_')]"
+                )
+
+                h_parsed_abilities[a_name] = [
+                    e.get_attribute('innerHTML') for e in a_notes
+                ]
+
+                # Remove duplicates from generic
+                for n in h_parsed_abilities[a_name]:
+                    if n in h_parsed_generic:
+                        h_parsed_generic.remove(n)
+
+            parsed_hero_notes[h_name] = {
+                "generic": h_parsed_generic,
+                "abilities": h_parsed_abilities,
+                "talents": h_parsed_talents
+            }
+
+        lines = [f"__New Patch:__ __**{title}**__\n"]
+        if len(parsed_generic_notes) > 0:
+            lines.append("\n__**General**__\n")
+
+            for thing in parsed_generic_notes:
+                if thing[-1] == ":":
+                    continue
+                lines.append(f" - {thing}\n")
+            lines.append("\n")
+
+        if len(parsed_item_notes) > 0:
+            lines.append("\n__**Items**__")
+
+            for name, notes in parsed_item_notes.items():
+                lines.append(f"\n__*{name}*__\n")
+
+                for note in notes:
+                    lines.append(f" - {note}\n")
+            lines.append("\n")
+
+        if len(parsed_hero_notes) > 0:
+            lines.append("\n__**Heroes**__")
+
+            for name, content in parsed_hero_notes.items():
+                lines.append(f"\n__*{name}*__\n")
+
+                for note in content['generic']:
+                    lines.append(f" - {note}\n")
+
+                for name, notes in content['abilities'].items():
+                    lines.append(f"***{name}***\n")
+
+                    for note in notes:
+                        lines.append(f" - {note}\n")
+
+                if len(content['talents']) > 0:
+                    lines.append("***Talents***\n")
+
+                    for talent in content['talents']:
+                        lines.append(f" - {talent}\n")
+
+            lines.append("\n")
+
+    driver.quit()
+
+    return lines
+
+
 class Games(commands.Cog):
     def __init__(self, bot):
         self.__bot = bot
 
         self.__heroes = []
 
-        chrome_options = Options()
-        chrome_options.add_argument("--headless")
-        chrome_options.add_argument("--no-sandbox")
-
-        driver = webdriver.Chrome(
-            options=chrome_options
-        )
-        driver.get("http://www.dota2.com/heroes/")
-
-        elements = WebDriverWait(driver, 10).until(
-            EC.visibility_of_all_elements_located((
-                By.XPATH, "//a[starts-with(@href, '/hero/')]"
-            )))
-
-        heroes = [e.find_element_by_xpath(
-            ".//div[starts-with(@class, 'herogridpage_HeroName_')]"
-        ).get_attribute("innerHTML") for e in elements]
-
-        links = [e.get_attribute('style').split("\"")[1] for e in elements]
-
-        for i, hero in enumerate(heroes):
-            self.__heroes.append({
-                "name": hero,
-                "link": links[i]
-            })
-
-        driver.quit()
-
+        self.update_heroes.start()
         self.patch_notes.start()
+        self.news_updates.start()
+
+    @tasks.loop(hours=24)
+    async def update_heroes(self):
+        await self.__bot.wait_until_ready()
+        self.__heroes = await loop.run_in_executor(selenium_exec, get_heroes)
 
     @tasks.loop(minutes=30)
     async def patch_notes(self):
         await self.__bot.wait_until_ready()
         logger.info("Searching for patch notes...")
-        response = requests.get('http://www.dota2.com/patches/')
-        soup = bs4.BeautifulSoup(response.text, "html.parser")
 
-        title = soup.select("p.PatchTitle")[0].text
+        lines = await loop.run_in_executor(selenium_exec, get_patchnotes)
 
-        title_file = Path('/files/last_title')
-
-        if title_file.exists():
-            with open('/files/last_title', "r") as t_file:
-                last_title = t_file.read()
-        else:
-            last_title = ""
-
-        if title > last_title:
-
-            logger.info("New patch notes found!")
-
-            with open('/files/last_title', "w") as t_file:
-                t_file.write(title)
-
-            parsed_items = []
-            parsed_heroes = []
-            parsed_general = []
-
-            general = soup.select("#GeneralSection")
-            if len(general) != 0:
-                general = general[0].select("li.PatchNote")
-                for thing in general:
-                    if 'HideDot' not in thing.attrs['class']:
-                        parsed_general.append(thing.text.strip())
-
-            items = soup.select("#ItemsSection")
-            if len(items) != 0:
-                items = items[0]
-                for item in items.contents:
-                    if item.name == "div":
-                        if hasattr(item, "text"):
-                            notes = []
-                            for note in item.select("li.PatchNote"):
-                                if 'HideDot' not in note.attrs['class']:
-                                    notes.append(note.text.strip())
-                            parsed_items.append({
-                                "name": item.select("div.ItemName")[0].text,
-                                "notes": notes
-                            })
-
-            heroes = soup.select("#HeroesSection")
-            if len(heroes) != 0:
-                heroes = heroes[0]
-                for hero in heroes.contents:
-                    if hero.name == "div":
-                        logger.info("Name:", hero.select("div.HeroName")[0].text)
-
-                        # Parse Hero notes
-                        hero_notes = []
-                        hero_note_list = hero.select("ul.HeroNotesList")
-                        if len(hero_note_list) > 0:
-                            for note in hero_note_list[0].select(
-                                    "li.PatchNote"):
-                                if 'HideDot' not in note.attrs['class']:
-                                    hero_notes.append(note.text.strip())
-
-                        # Parse Ability notes
-                        parsed_abilities = []
-                        for ability in hero.select("div.HeroAbilityNotes"):
-                            ability_notes = []
-                            for note in ability.select("li.PatchNote"):
-                                if 'HideDot' not in note.attrs['class']:
-                                    ability_notes.append(note.text.strip())
-                            parsed_abilities.append({
-                                "name": ability.select("div.AbilityName")[
-                                    0].text,
-                                "notes": ability_notes
-                            })
-
-                        # Parse Talent notes
-                        talent_notes = hero.select("div.TalentNotes")
-                        if len(talent_notes) > 0:
-                            parsed_talents = []
-                            for note in talent_notes[0].select("li.PatchNote"):
-                                if 'HideDot' not in note.attrs['class']:
-                                    parsed_talents.append(note.text.strip())
-                        else:
-                            parsed_talents = []
-
-                        # Assemble info of Hero
-                        parsed_heroes.append({
-                            "name": hero.select("div.HeroName")[0].text,
-                            "notes": hero_notes,
-                            "abilities": parsed_abilities,
-                            "talents": parsed_talents
-                        })
-
-            lines = [f"__New Patch:__ __**{title}**__\n"]
-            if len(parsed_general) > 0:
-                lines.append("\n__**General**__\n")
-
-                for thing in parsed_general:
-                    lines.append(f" - {thing}\n")
-                lines.append("\n")
-
-            if len(parsed_items) > 0:
-                lines.append("\n__**Items**__")
-
-                for item in parsed_items:
-                    lines.append(f"\n__*{item['name']}*__\n")
-
-                    for note in item['notes']:
-                        lines.append(f" - {note}\n")
-                lines.append("\n")
-
-            if len(parsed_heroes) > 0:
-                lines.append("\n__**Heroes**__")
-
-                for hero in parsed_heroes:
-                    lines.append(f"\n__*{hero['name']}*__\n")
-
-                    for note in hero['notes']:
-                        lines.append(f" - {note}\n")
-
-                    for ability in hero['abilities']:
-                        lines.append(f"***{ability['name']}***\n")
-
-                        for note in ability['notes']:
-                            lines.append(f" - {note}\n")
-
-                    if len(hero['talents']) > 0:
-                        lines.append("***Talents***\n")
-
-                        for talent in hero['talents']:
-                            lines.append(f" - {talent}\n")
-
-                lines.append("\n")
-
+        if len(lines) > 0:
             new_content = [""]
             for line in lines:
                 if len(line) + len(new_content[-1]) >= 2000:
@@ -203,6 +330,29 @@ class Games(commands.Cog):
             # Send messages to configured channel
             # TODO make dynamic
             channel = self.__bot.get_channel(367057131750293514)
+            for message in new_content:
+                await channel.send(message)
+                await asyncio.sleep(0.5)
+
+    @tasks.loop(minutes=30)
+    async def news_updates(self):
+        await self.__bot.wait_until_ready()
+        logger.info("Searching for news updates...")
+
+        lines = await loop.run_in_executor(selenium_exec, get_news_update)
+
+        if len(lines) > 0:
+            new_content = [""]
+            for line in lines:
+                if len(line) + len(new_content[-1]) >= 2000:
+                    new_content.append("")
+
+                new_content[-1] += line
+
+            # Send messages to configured channel
+            # TODO make dynamic
+            # channel = self.__bot.get_channel(367057131750293514)
+            channel = self.__bot.get_channel(790926909244047370)
             for message in new_content:
                 await channel.send(message)
                 await asyncio.sleep(0.5)
