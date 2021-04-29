@@ -303,9 +303,9 @@ class Games(commands.Cog):
 
         self.__heroes = []
 
-        # self.update_heroes.start()
+        self.update_heroes.start()
         # self.patch_notes.start()
-        #Dself.news_updates.start()
+        # self.news_updates.start()
 
     @tasks.loop(hours=24)
     async def update_heroes(self):
