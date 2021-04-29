@@ -4,297 +4,17 @@ import time
 import datetime
 import random
 import discord
+import requests
+import re
+from aiohttp import ClientSession
 from pathlib import Path
-
-from concurrent.futures import ThreadPoolExecutor
-
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.common.exceptions import NoSuchElementException
-
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-
 
 from core.config import settings, logger
 
-
-selenium_exec = ThreadPoolExecutor(2)
-
-loop = asyncio.get_event_loop()
-
-
-def get_heroes():
-    final = []
-
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--no-sandbox")
-
-    driver = webdriver.Chrome(
-        options=chrome_options
-    )
-    driver.get("http://www.dota2.com/heroes/")
-
-    elements = WebDriverWait(driver, 10).until(
-        EC.visibility_of_all_elements_located((
-            By.XPATH, "//a[starts-with(@href, '/hero/')]"
-        )))
-
-    heroes = [e.find_element_by_xpath(
-        ".//div[starts-with(@class, 'herogridpage_HeroName_')]"
-    ).get_attribute("innerHTML") for e in elements]
-
-    links = [e.get_attribute('style').split("\"")[1] for e in elements]
-
-    for i, hero in enumerate(heroes):
-        final.append({
-            "name": hero,
-            "link": links[i]
-        })
-
-    driver.quit()
-
-    return final
-
-
-def get_news_update():
-    lines = []
-
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--no-sandbox")
-
-    driver = webdriver.Chrome(
-        options=chrome_options
-    )
-    driver.get("https://www.dota2.com/news/updates")
-
-    content = WebDriverWait(driver, 10).until(
-        EC.visibility_of_all_elements_located((
-            By.XPATH,
-            ".//div[starts-with(@class, 'updatecapsule_UpdateCapsule_')]"
-        )))
-
-    if len(content) > 0:
-        content = content[0]
-
-    try:
-        date = content.find_element_by_xpath(
-            ".//div[starts-with(@class, 'updatecapsule_Date_')]").get_attribute(
-            'innerHTML')
-        date = datetime.datetime.strptime(date, "%B %d, %Y")
-
-        date_file = Path('/files/last_news')
-
-        if date_file.exists():
-            with open('/files/last_news', "r") as t_file:
-                last_date = datetime.datetime.fromisoformat(t_file.read())
-        else:
-            last_date = ""
-
-        if last_date == "" or date > last_date:
-            logger.info("New news article found!")
-
-            with open('/files/last_news', "w") as t_file:
-                t_file.write(date.isoformat())
-
-            title = content.find_element_by_xpath(
-                ".//div[starts-with(@class, 'updatecapsule_Title_')]").get_attribute(
-                'innerHTML')
-
-            desc = content.find_element_by_xpath(
-                ".//div[starts-with(@class, 'updatecapsule_Desc_')]").text
-
-            lines.append(f"__New update article__: __**{title}**__\n")
-            lines.append(f"Released: __{date.date().isoformat()}__\n\n")
-            for i in desc.split("\n"):
-                lines.append(f" - {i}\n")
-
-    except NoSuchElementException:
-        driver.quit()
-        return []
-
-    driver.quit()
-
-    return lines
-
-
-def get_patchnotes():
-    lines = []
-
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--no-sandbox")
-
-    driver = webdriver.Chrome(
-        options=chrome_options
-    )
-    driver.get("http://www.dota2.com/patches/")
-
-    content = WebDriverWait(driver, 10).until(
-        EC.visibility_of_all_elements_located((
-            By.ID, "dota_react_root"
-        )))
-
-    if len(content) > 0:
-        content = content[0]
-
-    title = content.find_element_by_xpath(
-        ".//div[starts-with(@class, 'patchnotespage_NotesTitle_')]").get_attribute(
-        'innerHTML')
-
-    title_file = Path('/files/last_title')
-
-    if title_file.exists():
-        with open('/files/last_title', "r") as t_file:
-            last_title = t_file.read()
-    else:
-        last_title = ""
-
-    if title > last_title:
-
-        logger.info("New patch notes found!")
-
-        with open('/files/last_title', "w") as t_file:
-            t_file.write(title)
-
-        # Get base elements for each section
-        generic_notes = content.find_elements_by_xpath(
-            ".//div[starts-with(@class, 'patchnotespage_PatchNoteGeneric_')]"
-        )
-        item_notes = content.find_elements_by_xpath(
-            ".//div[starts-with(@class, 'patchnotespage_PatchNoteItem_')]"
-        )
-        hero_notes = content.find_elements_by_xpath(
-            ".//div[starts-with(@class, 'patchnotespage_PatchNoteHero_')]"
-        )
-
-        # Parse generic notes
-        parsed_generic_notes = [e.find_element_by_xpath(
-            ".//div[starts-with(@class, 'patchnotespage_Note_')]"
-        ).get_attribute('innerHTML') for e in generic_notes]
-
-        parsed_item_notes = {}
-
-        # Parse items
-        for i in item_notes:
-            i_name = i.find_element_by_xpath(
-                ".//div[starts-with(@class, 'patchnotespage_ItemName_')]"
-            ).get_attribute('innerHTML')
-            i_content = i.find_elements_by_xpath(
-                ".//div[starts-with(@class, 'patchnotespage_Note_')]"
-            )
-            parsed_item_notes[i_name] = [
-                e.get_attribute('innerHTML') for e in i_content
-            ]
-
-        parsed_hero_notes = {}
-
-        # Parse heroes
-        for h in hero_notes:
-            h_name = h.find_element_by_xpath(
-                ".//div[starts-with(@class, 'patchnotespage_HeroName_')]"
-            ).get_attribute('innerHTML')
-            h_abilities = h.find_elements_by_xpath(
-                ".//div[starts-with(@class, 'patchnotespage_AbilityNote_')]"
-            )
-            h_generic = h.find_elements_by_xpath(
-                ".//div[starts-with(@class, 'patchnotespage_Note_')]"
-            )
-
-            try:
-                h_talents = h.find_element_by_xpath(
-                    ".//div[starts-with(@class, 'patchnotespage_TalentNotes_')]"
-                ).find_elements_by_xpath(
-                    ".//div[starts-with(@class, 'patchnotespage_Note_')]"
-                )
-            except NoSuchElementException:
-                h_talents = []
-
-            h_parsed_generic = [e.get_attribute('innerHTML') for e in
-                                h_generic]
-            h_parsed_talents = [e.get_attribute('innerHTML') for e in
-                                h_talents]
-
-            # Remove duplicates from generic
-            for n in h_parsed_talents:
-                if n in h_parsed_generic:
-                    h_parsed_generic.remove(n)
-
-            h_parsed_abilities = {}
-
-            # Parse abilities
-            for a in h_abilities:
-                a_name = a.find_element_by_xpath(
-                    ".//div[starts-with(@class, 'patchnotespage_AbilityName_')]"
-                ).get_attribute('innerHTML')
-                a_notes = a.find_elements_by_xpath(
-                    ".//div[starts-with(@class, 'patchnotespage_Note_')]"
-                )
-
-                h_parsed_abilities[a_name] = [
-                    e.get_attribute('innerHTML') for e in a_notes
-                ]
-
-                # Remove duplicates from generic
-                for n in h_parsed_abilities[a_name]:
-                    if n in h_parsed_generic:
-                        h_parsed_generic.remove(n)
-
-            parsed_hero_notes[h_name] = {
-                "generic": h_parsed_generic,
-                "abilities": h_parsed_abilities,
-                "talents": h_parsed_talents
-            }
-
-        lines = [f"__New Patch:__ __**{title}**__\n"]
-        if len(parsed_generic_notes) > 0:
-            lines.append("\n__**General**__\n")
-
-            for thing in parsed_generic_notes:
-                if thing[-1] == ":":
-                    continue
-                lines.append(f" - {thing}\n")
-            lines.append("\n")
-
-        if len(parsed_item_notes) > 0:
-            lines.append("\n__**Items**__")
-
-            for name, notes in parsed_item_notes.items():
-                lines.append(f"\n__*{name}*__\n")
-
-                for note in notes:
-                    lines.append(f" - {note}\n")
-            lines.append("\n")
-
-        if len(parsed_hero_notes) > 0:
-            lines.append("\n__**Heroes**__")
-
-            for name, content in parsed_hero_notes.items():
-                lines.append(f"\n__*{name}*__\n")
-
-                for note in content['generic']:
-                    lines.append(f" - {note}\n")
-
-                for name, notes in content['abilities'].items():
-                    lines.append(f"***{name}***\n")
-
-                    for note in notes:
-                        lines.append(f" - {note}\n")
-
-                if len(content['talents']) > 0:
-                    lines.append("***Talents***\n")
-
-                    for talent in content['talents']:
-                        lines.append(f" - {talent}\n")
-
-            lines.append("\n")
-
-    driver.quit()
-
-    return lines
+from core.database import session_lock, Session
+from core.database.models.steamnews import Post, Subscription
+from core.database.crud.steamnews import post as crud_post, subscription as crud_subscription
+from core.database.schemas.steamnews import CreateSubscription, CreatePost
 
 
 class Games(commands.Cog):
@@ -304,57 +24,239 @@ class Games(commands.Cog):
         self.__heroes = []
 
         self.update_heroes.start()
-        # self.patch_notes.start()
-        # self.news_updates.start()
+        self.patch_notes.start()
+        self.get_steam_news.start()
 
     @tasks.loop(hours=24)
     async def update_heroes(self):
         await self.__bot.wait_until_ready()
-        self.__heroes = await loop.run_in_executor(selenium_exec, get_heroes)
+        logger.info("Fetching Dota 2 heroes...")
+
+        r = requests.get(
+            "https://www.dota2.com/datafeed/herolist?language=english"
+        )
+        data = r.json()
+        if 'result' not in data or \
+                'data' not in data['result'] or \
+                'heroes' not in data['result']['data']:
+            logger.warning("Could not fetch heroes :/")
+            return
+
+        heroes = data['result']['data']['heroes']
+
+        self.__heroes = []
+
+        for hero in heroes:
+            self.__heroes.append({
+                "name": hero['name_loc'],
+                "link": f"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/{hero['name'].removeprefix('npc_dota_hero_')}.png"
+            })
+
+        logger.info("Done fetching heroes.")
+
+    @tasks.loop(minutes=30)
+    async def get_steam_news(self):
+        await self.__bot.wait_until_ready()
+        logger.info("Fetching Steam news...")
+        async with session_lock:
+            with Session() as session:
+                subs = crud_subscription.get_multi(session)
+                all_new_posts = []
+                async with ClientSession() as client:
+                    for s in subs:
+                        async with client.get(f"https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid={s.app_id}&count=100&maxlength=1500&format=json") as r:
+                            if r.status >= 400:
+                                logger.warning(
+                                    f"Could not find news for app {s.app_id}!"
+                                )
+                                continue
+
+                            data = await r.json()
+
+                            if 'appnews' not in data or 'newsitems' not in data['appnews']:
+                                logger.warning(
+                                    f"Could not find news for app {s.app_id}!"
+                                )
+                                continue
+
+                            new_posts = []
+
+                            for p in data['appnews']['newsitems']:
+                                if p['feed_type'] != 1:
+                                    continue
+
+                                db_post = crud_post.get_by_gid(session, p['gid'])
+
+                                if db_post is not None:
+                                    continue
+
+                                new_posts.append(p)
+
+                            for p in new_posts:
+                                all_new_posts.append(p)
+
+                                embed = discord.Embed()
+
+                                embed.set_author(
+                                    name=f"Steam News - {p['author']}",
+                                    icon_url="https://logos-world.net/wp-content/uploads/2020/10/Steam-Logo.png"
+                                )
+                                embed.title = p['title']
+                                embed.url = p['url']
+                                desc = re.sub(r"\{\S*\}\/\S*", "\n", p['contents'])
+                                embed.description = desc
+
+                                channel = self.__bot.get_channel(
+                                    int(s.channel_id)
+                                )
+
+                                await channel.send(embed=embed)
+                                await asyncio.sleep(0.5)
+
+                # Add all new posts to database so they wont be sent again
+                for p in all_new_posts:
+                    old_p = crud_post.get_by_gid(session, p['gid'])
+
+                    # Skip if already added
+                    if old_p is not None:
+                        continue
+
+                    crud_post.create(session, obj_in=CreatePost(**{
+                        'steam_gid': p['gid'],
+                        'title': p['title'],
+                        'content': p['contents']
+                    }))
+
+        logger.info("Done fetching Steam news.")
 
     @tasks.loop(minutes=30)
     async def patch_notes(self):
         await self.__bot.wait_until_ready()
-        logger.info("Searching for patch notes...")
+        logger.info("Fetching Dota 2 patch notes...")
 
-        lines = await loop.run_in_executor(selenium_exec, get_patchnotes)
+        r = requests.get(
+            "https://www.dota2.com/datafeed/patchnoteslist?language=english"
+        )
+        data = r.json()
+        if 'patches' not in data:
+            logger.warning("Could not fetch patch notes :/")
+            return
 
-        if len(lines) > 0:
-            new_content = [""]
-            for line in lines:
-                if len(line) + len(new_content[-1]) >= 2000:
-                    new_content.append("")
+        latest = data['patches'][-1]['patch_name']
 
-                new_content[-1] += line
+        patch_file = Path('/files/last_title')
 
-            # Send messages to configured channel
-            # TODO make dynamic
-            channel = self.__bot.get_channel(367057131750293514)
-            for message in new_content:
-                await channel.send(message)
-                await asyncio.sleep(0.5)
+        if patch_file.exists():
+            with open('/files/last_title', 'r') as pfr:
+                last_title = pfr.read()
+        else:
+            last_title = ""
 
-    @tasks.loop(minutes=30)
-    async def news_updates(self):
-        await self.__bot.wait_until_ready()
-        logger.info("Searching for news updates...")
+        if latest > last_title:
+            logger.info("New patch notes found!")
+            with open('/files/last_title', 'w') as pfw:
+                pfw.write(latest)
 
-        lines = await loop.run_in_executor(selenium_exec, get_news_update)
+            embed = discord.Embed()
 
-        if len(lines) > 0:
-            new_content = [""]
-            for line in lines:
-                if len(line) + len(new_content[-1]) >= 2000:
-                    new_content.append("")
-
-                new_content[-1] += line
+            embed.set_author(name="Dota2.com", icon_url="https://1000logos.net/wp-content/uploads/2019/03/Dota-2-Logo.png")
+            embed.title = f"New patch **{latest}** found!"
+            embed.url = f"https://www.dota2.com/patches/{latest}"
 
             # Send messages to configured channel
             # TODO make dynamic
             channel = self.__bot.get_channel(367057131750293514)
-            for message in new_content:
-                await channel.send(message)
-                await asyncio.sleep(0.5)
+            await channel.send(embed=embed)
+
+        logger.info("Done fetching Dota 2 patch notes.")
+
+    @commands.group(no_pm=True)
+    async def steam(self, ctx):
+        """
+        Steam related commands, more on !help steam
+
+        :param ctx: Context
+        :return:
+        """
+        if ctx.invoked_subcommand is None:
+            embed = discord.Embed()
+            embed.set_author(
+                name=self.__bot.user.name, url=settings.URL,
+                icon_url=self.__bot.user.avatar_url
+            )
+            embed.title = "Invalid steam command! `!help steam` for more info"
+            embed.timestamp = datetime.datetime.utcnow()
+            await ctx.send(embed=embed)
+
+    @steam.group(name="news", no_pm=True)
+    async def steam_news(self, ctx):
+        """
+        Steam News commands, more on !help steam news
+
+        :param ctx: Context
+        :return:
+        """
+        if ctx.invoked_subcommand is None:
+            embed = discord.Embed()
+            embed.set_author(
+                name=self.__bot.user.name, url=settings.URL,
+                icon_url=self.__bot.user.avatar_url
+            )
+            embed.title = "Invalid steam news command! `!help steam news` for more info"
+            embed.timestamp = datetime.datetime.utcnow()
+            await ctx.send(embed=embed)
+
+    @steam_news.command(name="subscribe", pass_context=True, no_pm=True, aliases=['sub'])
+    async def steam_news_subscribe(self, ctx, app_id: int):
+        """
+        Subscribe to Steam News with App ID.
+
+        :param ctx: Context
+        :param app_id: ID of a Steam App (can be found in Steam)
+        :return:
+        """
+        async with session_lock:
+            with Session() as session:
+                sub = crud_subscription.create(session, obj_in=CreateSubscription(**{
+                    'channel_id': str(ctx.message.channel.id),
+                    'app_id': app_id
+                }))
+                embed = discord.Embed()
+                embed.set_author(name=self.__bot.user.name,
+                                 url=settings.URL,
+                                 icon_url=self.__bot.user.avatar_url)
+                embed.title = f"Channel **{ctx.message.channel}** subscribed to Steam App **{sub.app_id}**!"
+                embed.timestamp = datetime.datetime.utcnow()
+                await ctx.send(embed=embed)
+
+    @steam_news.command(name="clear", pass_context=True, no_pm=True)
+    async def steam_news_clear(self, ctx):
+        """
+        Clear channels subscriptions.
+
+        :param ctx: Context
+        :return:
+        """
+        async with session_lock:
+            with Session() as session:
+                apps = []
+                subs = crud_subscription.get_multi_by_channel_id(session, ctx.message.channel.id)
+                for s in subs:
+                    old_s = crud_subscription.remove(session, s.uuid)
+                    apps.append(old_s.app_id)
+
+                embed = discord.Embed()
+                embed.set_author(name=self.__bot.user.name,
+                                 url=settings.URL,
+                                 icon_url=self.__bot.user.avatar_url)
+                embed.title = f"Cleared subscriptions on **{ctx.message.channel}**."
+                embed.description = "Removed subscriptions for Steam Apps with IDs:"
+
+                for a in apps:
+                    embed.description += f"\n{a}"
+
+                embed.timestamp = datetime.datetime.utcnow()
+                await ctx.send(embed=embed)
 
     @commands.command(pass_context=True)
     async def dota_random(self, ctx):
@@ -365,7 +267,7 @@ class Games(commands.Cog):
 
         embed = discord.Embed()
         embed.title = "You randomed..."
-        embed.description = f"Congratulation! You have randomed **{hero_name}**!"
+        embed.description = f"Congratulations! You have randomed **{hero_name}**!"
         embed.timestamp = datetime.datetime.utcnow()
         embed.colour = 8161513
         embed.set_author(name=self.__bot.user.name,
