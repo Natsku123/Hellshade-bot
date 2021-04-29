@@ -2,12 +2,11 @@ FROM node:lts-alpine as build-stage
 
 WORKDIR /app
 
-COPY package*.json ./
-COPY yarn* ./
+COPY package.json yarn.lock ./
+COPY . ./
 
 RUN yarn install
 
-COPY . .
 RUN yarn build
 
 FROM nginx:stable-alpine as prod-stage
