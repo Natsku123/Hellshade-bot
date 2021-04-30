@@ -210,6 +210,7 @@ class Games(commands.Cog):
             await ctx.send(embed=embed)
 
     @steam_news.command(name="subscribe", pass_context=True, no_pm=True, aliases=['sub'])
+    @commands.has_permissions(administrator=True)
     async def steam_news_subscribe(self, ctx, app_id: int):
         """
         Subscribe to Steam News with App ID.
@@ -233,6 +234,7 @@ class Games(commands.Cog):
                 await ctx.send(embed=embed)
 
     @steam_news.command(name="clear", pass_context=True, no_pm=True)
+    @commands.has_permissions(administrator=True)
     async def steam_news_clear(self, ctx):
         """
         Clear channels subscriptions.
