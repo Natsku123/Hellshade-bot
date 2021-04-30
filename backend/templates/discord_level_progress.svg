@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 588 350" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <rect x="0" y="0" width="588" height="350" style="fill:white;"/>
+    <text x="130px" y="85px" style="font-family:'ArialMT', 'Arial', sans-serif;font-size:34px;fill:black;">{{ name }}</text>
+    <path d="M571,220C571,215.033 566.967,211 562,211L26,211C21.033,211 17,215.033 17,220L17,241C17,245.967 21.033,250 26,250L562,250C566.967,250 571,245.967 571,241L571,220Z" style="fill:rgb(242,153,74);"/>
+    <rect x="18" y="212px" width="{{ px }}" height="37" rx="9" fill="#FFE698"/>
+    <text x="20" y="180px" style="font-family:'ArialMT', 'Arial', sans-serif;font-size:34px;fill:black;">Level {{ level }}</text>
+    <g transform="translate({{ x }})">
+        <text x="335" y="300px" text-anchor="{{ anchor }}" style="font-family:'ArialMT', 'Arial', sans-serif;font-size:24px;">{{ percentage }}</text>
+        <path d="M330.5,263.5L332.086,265.086L338.375,258.809L338.375,272.5L340.625,272.5L340.625,258.809L346.902,265.097L348.5,263.5L339.5,254.5L330.5,263.5Z" style="fill-rule:nonzero;"/>
+    </g>
+    <text x="570" y="200px" text-anchor="end" style="font-family:'ArialMT', 'Arial', sans-serif;font-size:14px;fill:black;">Experience: {{ current_exp }} / {{ needed_exp }}</text>
+    <text x="20" y="330px" style="font-family:'ArialMT', 'Arial', sans-serif;font-size:14px;fill:grey;">{{ dt }}</text>
+    {% if url %} <image x="20px" y="20px" href="{{ url }}" height="100" width="100"/> {% endif %}
+</svg>
