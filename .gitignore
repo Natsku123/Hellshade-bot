@@ -2,6 +2,7 @@
 data/
 files/
 *.json
+!package.json
 venv/
 .idea/
 __pycache__/
