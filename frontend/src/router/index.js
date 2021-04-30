@@ -5,6 +5,7 @@ import Levels from "@/views/Levels";
 import Members from "@/views/Members";
 import Servers from "@/views/Servers";
 import Server from "@/views/Server";
+import NotFound from "@/views/NotFound";
 
 Vue.use(VueRouter);
 
@@ -42,6 +43,10 @@ const routes = [
     path: "/servers/:id",
     name: "Server",
     component: Server
+  },
+  {
+    path: "*",
+    component: NotFound
   }
 ];
 
