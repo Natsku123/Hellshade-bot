@@ -64,6 +64,9 @@ class Games(commands.Cog):
                 all_new_posts = []
                 async with ClientSession() as client:
                     for s in subs:
+                        logger.info(
+                            f"Fetching news: {s.channel_id=} {s.app_id=}"
+                        )
                         async with client.get(f"https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid={s.app_id}&count=100&maxlength=1500&format=json") as r:
                             if r.status >= 400:
                                 logger.warning(

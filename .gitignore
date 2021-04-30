@@ -8,3 +8,4 @@ __pycache__/
 dump.py
 docker-compose-dev.yml
 chromedriver
+test.py

@@ -292,8 +292,19 @@ class Utility(commands.Cog):
                     )
 
                     base_exp = 5
+                    special_multi = 1
+
+                    now = datetime.datetime.utcnow()
+
+                    # Weekend double voice experience
+                    # Between Friday 15:00 -> Sunday 23:59 (UTC)
+                    if now.weekday() > 4 or \
+                            (now.weekday() == 4 and now.hour > 15):
+                        special_multi = 2
+
                     exp = math.ceil(
-                        len(member.voice.channel.members) / 4 * base_exp
+                        special_multi * (len(member.voice.channel.members) /
+                                         4 * base_exp)
                     )
 
                     if member_obj.level is not None:
@@ -307,8 +318,8 @@ class Utility(commands.Cog):
 
                     if next_level is None and member_obj.level is not None:
                         member_dict = {
-                            "exp": level_exp(member_obj.level.value+1),
-                            "value": member_obj.level.value+1
+                            "exp": level_exp(member_obj.level.value + 1),
+                            "value": member_obj.level.value + 1
                         }
 
                         next_level = crud_level.create(
@@ -332,10 +343,10 @@ class Utility(commands.Cog):
                         )
                         if server_obj.channel is not None:
                             if server_obj.channel in leveled_up:
-                                leveled_up[server_obj.channel].\
+                                leveled_up[server_obj.channel]. \
                                     append(member_obj)
                             else:
-                                leveled_up[server_obj.channel]\
+                                leveled_up[server_obj.channel] \
                                     = [member_obj]
                     crud_server.update(
                         session, db_obj=server_obj, obj_in={
@@ -368,7 +379,8 @@ class Utility(commands.Cog):
                             inline=False
                         )
 
-                    await self.__bot.get_channel(int(channel)).send(embed=embed)
+                    await self.__bot.get_channel(int(channel)).send(
+                        embed=embed)
 
                 logger.info("Experience calculated.")
 
@@ -444,7 +456,8 @@ class Utility(commands.Cog):
                         if db_player is None:
                             if player is None and "name" in member["player"]:
                                 name = member["player"]["name"]
-                            elif player is None and "name" not in member["player"]:
+                            elif player is None and "name" not in member[
+                                "player"]:
                                 name = "UNKNOWN"
                             else:
                                 name = player.name
@@ -472,7 +485,8 @@ class Utility(commands.Cog):
                         if db_server is None:
                             if server is None and "name" in member["server"]:
                                 name = member["server"]["name"]
-                            elif server is None and "name" not in member["server"]:
+                            elif server is None and "name" not in member[
+                                "server"]:
                                 name = "UNKNOWN"
                             else:
                                 name = server.name
@@ -486,11 +500,12 @@ class Utility(commands.Cog):
                                 })
                             )
                         else:
-                            if db_server.channel != member["server"].\
+                            if db_server.channel != member["server"]. \
                                     get("channel"):
                                 db_server = crud_server.update(
                                     session, db_obj=db_server, obj_in={
-                                        "channel": member["server"].get("channel")
+                                        "channel": member["server"].get(
+                                            "channel")
                                     }
                                 )
 
@@ -500,7 +515,8 @@ class Utility(commands.Cog):
 
                         if "level_id" in member:
                             logger.debug(member["level_id"])
-                        if "level_id" in member and member["level_id"] != "NULL":
+                        if "level_id" in member and member[
+                            "level_id"] != "NULL":
                             current_level = int(member["level_id"])
                         else:
                             current_level = 0
@@ -557,7 +573,8 @@ class Utility(commands.Cog):
             async with session_lock:
                 with Session() as session:
                     if channel_id is not None and \
-                            self.__bot.get_channel(int(channel_id)) is not None:
+                            self.__bot.get_channel(
+                                int(channel_id)) is not None:
 
                         server = get_create(
                             session, crud_server, obj_in=CreateServer(**{
@@ -678,7 +695,8 @@ class Utility(commands.Cog):
                     embed.url = f"{settings.URL}/servers/{server.uuid}/top5"
                     embed.timestamp = datetime.datetime.utcnow()
                     embed.colour = Colors.other
-                    embed.set_author(name=self.__bot.user.name, url=settings.URL,
+                    embed.set_author(name=self.__bot.user.name,
+                                     url=settings.URL,
                                      icon_url=self.__bot.user.avatar_url)
 
                     for member in top_5:
@@ -739,8 +757,8 @@ class Utility(commands.Cog):
                         if member.level is not None:
                             next_level = get_create(
                                 session, crud_level, obj_in=CreateLevel(**{
-                                    "value": member.level.value+1,
-                                    "exp": level_exp(member.level.value+1)
+                                    "value": member.level.value + 1,
+                                    "exp": level_exp(member.level.value + 1)
                                 })
                             )
                         else:
@@ -765,15 +783,22 @@ class Utility(commands.Cog):
                         embed.set_author(name=self.__bot.user.name,
                                          url=settings.URL,
                                          icon_url=self.__bot.user.avatar_url)
-                        embed.add_field(
-                            name=f"**Level {next_level.value-1}**",
-                            value=f"Experience: **{member.exp}/{next_level.exp}**",
-                            inline=False)
+                        # embed.add_field(
+                        #     name=f"**Level {next_level.value - 1}**",
+                        #     value=f"Experience: **{member.exp}/{next_level.exp}**",
+                        #     inline=False)
 
-                        embed.add_field(
-                            name=f"Progress: "
-                                 f"**{member.exp / next_level.exp * 100:.2f}%**",
-                            value=f"`{progress_bar(member.exp, next_level.exp)}`")
+                        # embed.add_field(
+                        #     name=f"Progress: "
+                        #          f"**{member.exp / next_level.exp * 100:.2f}%**",
+                        #     value=f"`{progress_bar(member.exp, next_level.exp)}`")
+
+                        embed.set_image(
+                            url=f"{settings.URL}/api/level-image"
+                                f"?name={ctx.author.name}"
+                                f"&level={next_level.value - 1}"
+                                f"&current_exp={member.exp}"
+                                f"&needed_exp={next_level.exp}")
 
             if message != "" and embed is None:
                 await ctx.send(message)
@@ -804,7 +829,8 @@ class Utility(commands.Cog):
                         )
 
                     embed = discord.Embed()
-                    embed.set_author(name=self.__bot.user.name, url=settings.URL,
+                    embed.set_author(name=self.__bot.user.name,
+                                     url=settings.URL,
                                      icon_url=self.__bot.user.avatar_url)
 
                     embed.title = "Success!"

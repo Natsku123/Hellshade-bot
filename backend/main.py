@@ -1,8 +1,12 @@
-from fastapi import FastAPI
+import io
+import cairosvg
+from fastapi import FastAPI, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.graphql import GraphQLApp
+from starlette.responses import StreamingResponse
 
 from core.database.schemas.graphql import schema
+from core.utils.svg import render
 
 from config import settings
 
@@ -16,3 +20,16 @@ app.add_middleware(
 )
 
 app.add_route("/", GraphQLApp(schema=schema))
+
+
+@app.get('/level-image')
+async def level_image(
+        name: str = Query("[NAME]"),
+        current_exp: int = Query(0),
+        needed_exp: int = Query(1000),
+        level: int = Query(0),
+        icon: str = Query(None)
+):
+    svg = render(name, current_exp, needed_exp, level, icon)
+    bts = cairosvg.svg2png(svg.encode('UTF-8'))
+    return StreamingResponse(io.BytesIO(bts), media_type="image/png")
