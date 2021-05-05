@@ -5,7 +5,7 @@ LABEL maintainer="Max Mecklin <max@meckl.in>"
 RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/community" > /etc/apk/repositories
 RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories
 
-RUN apk update && apk add python3-dev gcc libc-dev postgresql-dev build-base curl chromium chromium-chromedriver
+RUN apk update && apk add python3-dev gcc libc-dev postgresql-dev build-base curl
 
 COPY . /bot
 
@@ -16,7 +16,7 @@ WORKDIR /bot
 
 RUN pip3.9 install -r requirements.txt
 
-ENV PYTHONPATH "${PYTHONPATH}:/app"
+ENV PYTHONPATH "${PYTHONPATH}:/bot"
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["python3.9", "main.py"]
