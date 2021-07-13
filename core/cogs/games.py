@@ -247,7 +247,7 @@ class Games(commands.Cog):
                 apps = []
                 subs = crud_subscription.get_multi_by_channel_id(session, ctx.message.channel.id)
                 for s in subs:
-                    old_s = crud_subscription.remove(session, s.uuid)
+                    old_s = crud_subscription.remove(session, uuid=s.uuid)
                     apps.append(old_s.app_id)
 
                 embed = discord.Embed()

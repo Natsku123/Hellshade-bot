@@ -24,6 +24,11 @@ class Roles(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
+
+        # Discard bot reaction event
+        if payload.member.bot:
+            return
+
         async with session_lock:
             with Session() as session:
 
@@ -90,20 +95,20 @@ class Roles(commands.Cog):
                         )
 
     @commands.Cog.listener()
-    async def on_raw_reaction_revome(self, payload):
+    async def on_raw_reaction_remove(self, payload):
         async with session_lock:
             with Session() as session:
 
                 server = server_crud.get_by_discord(session, payload.guild_id)
                 if server and str(payload.message_id) == server.role_message:
                     db_player = player_crud.get_by_discord(
-                        session, payload.member.id
+                        session, payload.user_id
                     )
 
                     # Stop if player not registered
                     if db_player is None:
                         logger.error(
-                            f"Player not found for {payload.member.id}."
+                            f"Player not found for {payload.user_id}."
                         )
                         return
 
@@ -114,7 +119,7 @@ class Roles(commands.Cog):
                     # Stop if member not registered
                     if db_member is None:
                         logger.error(
-                            f"Member not found for {payload.member.id}."
+                            f"Member not found for {payload.user_id}."
                         )
                         return
 
@@ -141,9 +146,9 @@ class Roles(commands.Cog):
                         return
 
                     try:
-                        role = self.__bot.get_guild(payload.guild_id) \
-                            .get_role(int(d_id))
-                        await payload.member.remove_roles(
+                        guild = self.__bot.get_guild(payload.guild_id)
+                        role = guild.get_role(int(d_id))
+                        await guild.get_member(payload.user_id).remove_roles(
                             role,
                             reason="Removed through role reaction."
                         )
@@ -245,6 +250,9 @@ class Roles(commands.Cog):
                             session, server.uuid
                         )
 
+                        # Gather all used emojis for future reactions
+                        emojis = []
+
                         for ro in roles:
 
                             emoji = emoji_crud.get_by_role(session, ro.uuid)
@@ -269,7 +277,19 @@ class Roles(commands.Cog):
                                 name=str(e), value=ro.name,
                                 inline=False
                             )
+                            emojis.append(e)
+
                         await message.edit(embed=embed)
+
+                        # Check old reactions
+                        old_emojis = []
+                        for r in message.reactions:
+                            old_emojis.append(r.emoji)
+
+                        # Add new reactions to message
+                        for e in emojis:
+                            if e not in old_emojis:
+                                await message.add_reaction(e)
 
     @role_update.before_loop
     async def before_loop(self):
@@ -569,6 +589,9 @@ class Roles(commands.Cog):
                     session, get_create_ctx(ctx, session, server_crud).uuid
                 )
 
+                # Gather all used emojis for future reactions
+                emojis = []
+
                 for r in roles:
 
                     emoji = emoji_crud.get_by_role(
@@ -594,13 +617,19 @@ class Roles(commands.Cog):
 
                         # Add to message
                         embed.add_field(
-                            name=f"{str(e)} - {r.name}",
+                            name=f"{str(e)}  ==  {r.name}",
                             value=r.description,
                             inline=False
                         )
 
+                        emojis.append(e)
+
                 # Send message
                 role_message = await ctx.send(embed=embed)
+
+                # Add reaction to message with all used emojis
+                for e in emojis:
+                    await role_message.add_reaction(e)
 
                 # Update server object to include role message data
                 server_update = UpdateServer(**{
