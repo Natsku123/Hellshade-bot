@@ -385,255 +385,242 @@ class Utility(commands.Cog):
                 logger.info("Experience calculated.")
 
     @commands.command(pass_context=True, hidden=True, no_pm=True)
+    @commands.has_permissions(administrator=True)
     async def generate_levels(self, ctx, up_to=None):
         embed = discord.Embed()
         embed.set_author(name=self.__bot.user.name,
                          url=settings.URL,
                          icon_url=self.__bot.user.avatar_url)
 
-        if ctx.message.author.id not in await get_admins(self.__bot):
-            embed.title = "Unauthorized"
-            embed.colour = Colors.unauthorized
-            embed.description = "You don't have permissions to use " \
-                                "this command :/"
+        async with session_lock:
+            with Session() as session:
+                levels = crud_level.generate_many(
+                    session, up_to
+                )
 
-        else:
-            async with session_lock:
-                with Session() as session:
-                    levels = crud_level.generate_many(
-                        session, up_to
-                    )
-
-            embed.title = "Levels generated."
-            embed.description = f"Levels generated up to {len(levels)}!"
-            embed.colour = Colors.other
+        embed.title = "Levels generated."
+        embed.description = f"Levels generated up to {len(levels)}!"
+        embed.colour = Colors.other
 
         embed.timestamp = datetime.datetime.utcnow()
         await ctx.send(embed=embed)
 
     @commands.command(pass_context=True, hidden=True, no_pm=True)
+    @commands.has_permissions(administrator=True)
     async def load_dump(self, ctx, filename=None):
         embed = discord.Embed()
         embed.set_author(name=self.__bot.user.name,
                          url=settings.URL,
                          icon_url=self.__bot.user.avatar_url)
 
-        if ctx.message.author.id not in await get_admins(self.__bot):
-            embed.title = "Unauthorized"
+
+        updated = []
+        if filename is None:
+            filename = "/members.dump.json"
+        try:
+            with open(filename, "r") as dump_file:
+                data = json.load(dump_file)
+        except OSError:
             embed.colour = Colors.unauthorized
-            embed.description = "You don't have permissions to use " \
-                                "this command :/"
-        else:
-            updated = []
-            if filename is None:
-                filename = "/members.dump.json"
-            try:
-                with open(filename, "r") as dump_file:
-                    data = json.load(dump_file)
-            except OSError:
-                embed.colour = Colors.unauthorized
-                embed.title = "File not found!"
-                embed.description = "Be sure that you inserted the right " \
-                                    "filename and you have copied the file " \
-                                    "into the container!"
-                embed.timestamp = datetime.datetime.utcnow()
-                await ctx.send(embed=embed)
-                return
+            embed.title = "File not found!"
+            embed.description = "Be sure that you inserted the right " \
+                                "filename and you have copied the file " \
+                                "into the container!"
+            embed.timestamp = datetime.datetime.utcnow()
+            await ctx.send(embed=embed)
+            return
 
-            for member in data:
-                async with session_lock:
-                    with Session() as session:
-                        player_discord_id = member["player"]["discord_id"]
-                        server_discord_id = member["server"]["discord_id"]
-                        exp = int(member["exp"])
-                        player = self.__bot.get_user(player_discord_id)
-                        server = self.__bot.get_guild(server_discord_id)
+        for member in data:
+            async with session_lock:
+                with Session() as session:
+                    player_discord_id = member["player"]["discord_id"]
+                    server_discord_id = member["server"]["discord_id"]
+                    exp = int(member["exp"])
+                    player = self.__bot.get_user(player_discord_id)
+                    server = self.__bot.get_guild(server_discord_id)
 
-                        db_player = crud_player.get_by_discord(
-                            session, player_discord_id
+                    db_player = crud_player.get_by_discord(
+                        session, player_discord_id
+                    )
+
+                    if db_player is None:
+                        if player is None and "name" in member["player"]:
+                            name = member["player"]["name"]
+                        elif player is None and "name" not in member[
+                            "player"]:
+                            name = "UNKNOWN"
+                        else:
+                            name = player.name
+                        db_player = crud_player.create(
+                            session, obj_in=CreatePlayer(**{
+                                "discord_id": player_discord_id,
+                                "name": name,
+                                "hidden": "hidden" in member["player"] and
+                                          member["player"]["hidden"] == 1
+                            })
                         )
-
-                        if db_player is None:
-                            if player is None and "name" in member["player"]:
-                                name = member["player"]["name"]
-                            elif player is None and "name" not in member[
-                                "player"]:
-                                name = "UNKNOWN"
-                            else:
-                                name = player.name
-                            db_player = crud_player.create(
-                                session, obj_in=CreatePlayer(**{
-                                    "discord_id": player_discord_id,
-                                    "name": name,
-                                    "hidden": "hidden" in member["player"] and
-                                              member["player"]["hidden"] == 1
-                                })
-                            )
-                        else:
-                            hidden = "hidden" in member["player"] and \
-                                     member["player"]["hidden"] == 1
-                            if hidden != db_player.hidden:
-                                db_player = crud_player.update(
-                                    session, db_obj=db_player, obj_in={
-                                        "hidden": hidden
-                                    }
-                                )
-
-                        db_server = crud_server.get_by_discord(
-                            session, server_discord_id
-                        )
-                        if db_server is None:
-                            if server is None and "name" in member["server"]:
-                                name = member["server"]["name"]
-                            elif server is None and "name" not in member[
-                                "server"]:
-                                name = "UNKNOWN"
-                            else:
-                                name = server.name
-
-                            db_server = crud_server.create(
-                                session, obj_in=CreateServer(**{
-                                    "discord_id": server_discord_id,
-                                    "name": name,
-                                    "server_exp": 0,
-                                    "channel": member["server"].get("channel")
-                                })
-                            )
-                        else:
-                            if db_server.channel != member["server"]. \
-                                    get("channel"):
-                                db_server = crud_server.update(
-                                    session, db_obj=db_server, obj_in={
-                                        "channel": member["server"].get(
-                                            "channel")
-                                    }
-                                )
-
-                        db_member = crud_member.get_by_ids(
-                            session, db_player.uuid, db_server.uuid
-                        )
-
-                        if "level_id" in member:
-                            logger.debug(member["level_id"])
-                        if "level_id" in member and member[
-                            "level_id"] != "NULL":
-                            current_level = int(member["level_id"])
-                        else:
-                            current_level = 0
-
-                        current_level, exp = process_exp(current_level, exp)
-                        if current_level > 0:
-                            db_level = get_create(
-                                session, crud_level, obj_in=CreateLevel(**{
-                                    "value": current_level,
-                                    "exp": level_exp(current_level),
-                                    "title": None
-                                })
-                            )
-                            level_uuid = db_level.uuid
-                        else:
-                            level_uuid = None
-
-                        if db_member is None:
-                            db_member = crud_member.create(
-                                session, obj_in=CreateMember(**{
-                                    "exp": exp,
-                                    "player_uuid": db_player.uuid,
-                                    "server_uuid": db_server.uuid,
-                                    "level_uuid": level_uuid
-                                })
-                            )
-                        else:
-                            db_member = crud_member.update(
-                                session, db_obj=db_member, obj_in={
-                                    "level_uuid": level_uuid,
-                                    "exp": exp
+                    else:
+                        hidden = "hidden" in member["player"] and \
+                                 member["player"]["hidden"] == 1
+                        if hidden != db_player.hidden:
+                            db_player = crud_player.update(
+                                session, db_obj=db_player, obj_in={
+                                    "hidden": hidden
                                 }
                             )
 
-                        updated.append(db_member)
-            embed.colour = Colors.other
-            embed.title = "Members loaded from dump file."
-            embed.description = f"Members updated: {len(updated)}"
+                    db_server = crud_server.get_by_discord(
+                        session, server_discord_id
+                    )
+                    if db_server is None:
+                        if server is None and "name" in member["server"]:
+                            name = member["server"]["name"]
+                        elif server is None and "name" not in member[
+                            "server"]:
+                            name = "UNKNOWN"
+                        else:
+                            name = server.name
+
+                        db_server = crud_server.create(
+                            session, obj_in=CreateServer(**{
+                                "discord_id": server_discord_id,
+                                "name": name,
+                                "server_exp": 0,
+                                "channel": member["server"].get("channel")
+                            })
+                        )
+                    else:
+                        if db_server.channel != member["server"]. \
+                                get("channel"):
+                            db_server = crud_server.update(
+                                session, db_obj=db_server, obj_in={
+                                    "channel": member["server"].get(
+                                        "channel")
+                                }
+                            )
+
+                    db_member = crud_member.get_by_ids(
+                        session, db_player.uuid, db_server.uuid
+                    )
+
+                    if "level_id" in member:
+                        logger.debug(member["level_id"])
+                    if "level_id" in member and member[
+                        "level_id"] != "NULL":
+                        current_level = int(member["level_id"])
+                    else:
+                        current_level = 0
+
+                    current_level, exp = process_exp(current_level, exp)
+                    if current_level > 0:
+                        db_level = get_create(
+                            session, crud_level, obj_in=CreateLevel(**{
+                                "value": current_level,
+                                "exp": level_exp(current_level),
+                                "title": None
+                            })
+                        )
+                        level_uuid = db_level.uuid
+                    else:
+                        level_uuid = None
+
+                    if db_member is None:
+                        db_member = crud_member.create(
+                            session, obj_in=CreateMember(**{
+                                "exp": exp,
+                                "player_uuid": db_player.uuid,
+                                "server_uuid": db_server.uuid,
+                                "level_uuid": level_uuid
+                            })
+                        )
+                    else:
+                        db_member = crud_member.update(
+                            session, db_obj=db_member, obj_in={
+                                "level_uuid": level_uuid,
+                                "exp": exp
+                            }
+                        )
+
+                    updated.append(db_member)
+        embed.colour = Colors.other
+        embed.title = "Members loaded from dump file."
+        embed.description = f"Members updated: {len(updated)}"
         embed.timestamp = datetime.datetime.utcnow()
         await ctx.send(embed=embed)
 
     @commands.command(pass_context=True, hidden=True, no_pm=True)
+    @commands.has_permissions(administrator=True)
     async def levels_channel(self, ctx, channel_id=None):
         embed = discord.Embed()
         embed.set_author(name=self.__bot.user.name,
                          url=settings.URL,
                          icon_url=self.__bot.user.avatar_url)
-        if ctx.message.author.id not in await get_admins(self.__bot):
-            embed.title = "Unauthorized"
-            embed.colour = Colors.unauthorized
-            embed.description = "You don't have permissions to use " \
-                                "this command :/"
-        else:
-            async with session_lock:
-                with Session() as session:
-                    if channel_id is not None and \
-                            self.__bot.get_channel(
-                                int(channel_id)) is not None:
 
-                        server = get_create(
-                            session, crud_server, obj_in=CreateServer(**{
-                                "discord_id": ctx.guild.id,
-                                "name": ctx.guild.name,
-                                "server_exp": 0,
+        async with session_lock:
+            with Session() as session:
+                if channel_id is not None and \
+                        self.__bot.get_channel(
+                            int(channel_id)) is not None:
+
+                    server = get_create(
+                        session, crud_server, obj_in=CreateServer(**{
+                            "discord_id": ctx.guild.id,
+                            "name": ctx.guild.name,
+                            "server_exp": 0,
+                            "channel": channel_id
+                        })
+                    )
+                    if server.channel != channel_id:
+                        crud_server.update(
+                            session, db_obj=server, obj_in={
                                 "channel": channel_id
-                            })
+                            }
                         )
-                        if server.channel != channel_id:
-                            crud_server.update(
-                                session, db_obj=server, obj_in={
-                                    "channel": channel_id
-                                }
-                            )
-                        embed.title = "Success"
-                        embed.colour = Colors.success
-                        embed.description = "Channel successfully registered."
-                    elif self.__bot.get_channel(int(channel_id)) is None and \
-                            channel_id is not None:
-                        embed.colour = Colors.error
-                        embed.title = "Error"
-                        embed.description = "Channel not found."
-                    else:
-                        server = get_create(
-                            session, crud_server, obj_in=CreateServer(**{
-                                "discord_id": ctx.guild.id,
-                                "name": ctx.guild.name,
-                                "server_exp": 0,
-                                "channel": None
-                            })
-                        )
+                    embed.title = "Success"
+                    embed.colour = Colors.success
+                    embed.description = "Channel successfully registered."
+                elif self.__bot.get_channel(int(channel_id)) is None and \
+                        channel_id is not None:
+                    embed.colour = Colors.error
+                    embed.title = "Error"
+                    embed.description = "Channel not found."
+                else:
+                    server = get_create(
+                        session, crud_server, obj_in=CreateServer(**{
+                            "discord_id": ctx.guild.id,
+                            "name": ctx.guild.name,
+                            "server_exp": 0,
+                            "channel": None
+                        })
+                    )
 
-                        embed.title = f"Levels channel for **{server.name}**"
-                        if server.channel is not None:
-                            embed.colour = Colors.other
-                            channel = self.__bot.get_channel(server.channel)
-                            embed.add_field(
-                                name="Levels channel:", value=channel.name
-                            )
-                            embed.add_field(
-                                name="Creation date:", value=channel.created_at
-                            )
-                        else:
-                            embed.colour = Colors.unauthorized
-                            embed.add_field(
-                                name="Levels channel:",
-                                value="No channel for levels."
-                            )
-                            embed.add_field(
-                                name="Setup",
-                                value="Create a new text channel and run this "
-                                      "command with the channel_id as an argument."
-                            )
+                    embed.title = f"Levels channel for **{server.name}**"
+                    if server.channel is not None:
+                        embed.colour = Colors.other
+                        channel = self.__bot.get_channel(server.channel)
+                        embed.add_field(
+                            name="Levels channel:", value=channel.name
+                        )
+                        embed.add_field(
+                            name="Creation date:", value=channel.created_at
+                        )
+                    else:
+                        embed.colour = Colors.unauthorized
+                        embed.add_field(
+                            name="Levels channel:",
+                            value="No channel for levels."
+                        )
+                        embed.add_field(
+                            name="Setup",
+                            value="Create a new text channel and run this "
+                                  "command with the channel_id as an argument."
+                        )
 
         embed.timestamp = datetime.datetime.utcnow()
         await ctx.send(embed=embed)
 
     @commands.command(pass_context=True, hidden=True)
+    @commands.has_permissions(administrator=True)
     async def get_user(self, ctx, user_id=None):
         embed = discord.Embed()
         embed.set_author(

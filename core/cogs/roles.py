@@ -410,11 +410,13 @@ class Roles(commands.Cog):
         await ctx.send(embed=embed)
 
     @role.command(pass_context=True, no_pm=True)
+    @commands.has_permissions(administrator=True)
     async def create(
             self, ctx, discord_id: int, description: str, emoji: str = None
     ):
         """
         Create assignable role
+
         :param ctx: Context
         :param discord_id: Role Discord ID
         :param description: Description of role usage
@@ -467,6 +469,7 @@ class Roles(commands.Cog):
         await ctx.send(embed=embed)
 
     @role.command(pass_context=True, no_pm=True)
+    @commands.has_permissions(administrator=True)
     async def update(self, ctx, discord_id: int, description: str):
         """
         Update role description
@@ -502,9 +505,11 @@ class Roles(commands.Cog):
         await ctx.send(embed=embed)
 
     @role.command(pass_context=True, no_pm=True)
+    @commands.has_permissions(administrator=True)
     async def delete(self, ctx, discord_id: int):
         """
         Delete assignable role
+
         :param ctx: Context
         :param discord_id: Role Discord ID
         :return:
@@ -564,6 +569,7 @@ class Roles(commands.Cog):
         await ctx.send(embed=embed)
 
     @role.command(pass_context=True, no_pm=True, hidden=True)
+    @commands.has_permissions(administrator=True)
     async def init(self, ctx):
         """
         Initialize role message for current channel
