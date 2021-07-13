@@ -413,7 +413,6 @@ class Utility(commands.Cog):
                          url=settings.URL,
                          icon_url=self.__bot.user.avatar_url)
 
-
         updated = []
         if filename is None:
             filename = "/members.dump.json"
@@ -579,8 +578,8 @@ class Utility(commands.Cog):
                     embed.title = "Success"
                     embed.colour = Colors.success
                     embed.description = "Channel successfully registered."
-                elif self.__bot.get_channel(int(channel_id)) is None and \
-                        channel_id is not None:
+                elif channel_id is not None and \
+                        self.__bot.get_channel(int(channel_id)) is None:
                     embed.colour = Colors.error
                     embed.title = "Error"
                     embed.description = "Channel not found."
@@ -597,7 +596,7 @@ class Utility(commands.Cog):
                     embed.title = f"Levels channel for **{server.name}**"
                     if server.channel is not None:
                         embed.colour = Colors.other
-                        channel = self.__bot.get_channel(server.channel)
+                        channel = self.__bot.get_channel(int(server.channel))
                         embed.add_field(
                             name="Levels channel:", value=channel.name
                         )
