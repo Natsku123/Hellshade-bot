@@ -167,6 +167,9 @@ class Roles(commands.Cog):
         Update roles stored every 30 minutes
         :return:
         """
+        await self.__bot.wait_until_ready()
+        logger.info("Updating role messages...")
+
         async with session_lock:
             with Session() as session:
 
@@ -216,24 +219,28 @@ class Roles(commands.Cog):
                     # Update role message if it exists
                     if server.role_message is not None and \
                             server.role_channel is not None:
-                        channel = self.__bot.get_channel(server.role_channel)
+                        channel = self.__bot.get_channel(
+                            int(server.role_channel)
+                        )
 
                         # Continue if channel wasn't found
                         if channel is None:
+                            logger.info(f"No channel found for {server.name}.")
                             continue
 
                         # Channel must not be bloated with messages
                         message = utils.find(
-                            lambda m: (m.id == server.role_message),
+                            lambda m: (m.id == int(server.role_message)),
                             await channel.history(limit=10).flatten()
                         )
 
                         # Continue if message wasn't found
                         if message is None:
+                            logger.info(f"No message found for {server.name}.")
                             continue
 
                         # Get context
-                        ctx = self.__bot.get_context(message)
+                        ctx = await self.__bot.get_context(message)
 
                         embed = Embed()
                         embed.title = f"Assignable roles for " \
@@ -274,9 +281,11 @@ class Roles(commands.Cog):
 
                             # Add to message
                             embed.add_field(
-                                name=str(e), value=ro.name,
+                                name=f"{str(e)}  ==  {ro.name}",
+                                value=ro.description,
                                 inline=False
                             )
+
                             emojis.append(e)
 
                         await message.edit(embed=embed)
@@ -291,9 +300,7 @@ class Roles(commands.Cog):
                             if e not in old_emojis:
                                 await message.add_reaction(e)
 
-    @role_update.before_loop
-    async def before_loop(self):
-        await self.__bot.wait_until_ready()
+                        logger.info(f"Message updated for {server.name}.")
 
     @commands.group(no_pm=True)
     async def role(self, ctx):
