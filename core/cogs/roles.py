@@ -526,6 +526,11 @@ class Roles(commands.Cog):
                     embed.title = "Role not found"
                     embed.colour = Colors.error
                 else:
+                    db_emoji = emoji_crud.get_by_role(session, db_role.uuid)
+
+                    if db_emoji is not None:
+                        emoji_crud.remove(session, uuid=db_emoji.uuid)
+
                     db_role = role_crud.remove(session, uuid=db_role.uuid)
                     embed.title = f"Role *{db_role.name}* removed."
                     embed.colour = Colors.success
