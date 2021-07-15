@@ -1,13 +1,18 @@
 <template>
   <div class="server">
-    <v-row justify="center"
-      ><v-col
-        ><h1>{{ server.name }}</h1></v-col
-      ></v-row
-    >
-    <v-row justify="center"
-      ><v-col><h2>Top 10</h2></v-col></v-row
-    >
+    <v-row justify="center">
+      <v-col>
+        <h1>{{ server.name }}</h1>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col>
+        Last seen: {{ (new Date(server.lastSeen)).toLocaleString() }}
+      </v-col>
+    </v-row>
+    <v-row justify="center">
+      <v-col><h2>Top 10</h2></v-col>
+    </v-row>
     <v-row>
       <v-col
         xs="12"
@@ -21,9 +26,9 @@
         <MemberCard :member="member" />
       </v-col>
     </v-row>
-    <v-row justify="center"
-      ><v-col><h2>All Members</h2></v-col></v-row
-    >
+    <v-row justify="center">
+      <v-col><h2>All Members</h2></v-col>
+    </v-row>
     <v-row>
       <v-col
         xs="12"
@@ -67,6 +72,7 @@ export default {
             server(uuid: \"${id}\") {
                 uuid
                 name
+                lastSeen
             }
         }
       `;

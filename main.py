@@ -2,6 +2,7 @@ import signal
 import discord
 from discord.ext import commands
 
+from core.cogs.core import Core
 from core.cogs.games import Games
 from core.cogs.utility import Utility
 from core.cogs.roles import Roles
@@ -27,6 +28,7 @@ def main():
         intents=intents
     )
 
+    bot.add_cog(Core(bot))
     bot.add_cog(Utility(bot, settings.ADMINS))
     bot.add_cog(Games(bot))
     bot.add_cog(Roles(bot))

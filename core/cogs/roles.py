@@ -458,7 +458,11 @@ class Roles(commands.Cog):
                     })
 
                     db_role = role_crud.create(session, obj_in=role)
+
                     if emoji is not None:
+                        if hasattr(emoji, 'name'):
+                            emoji = emoji.name
+                            
                         db_e = CreateRoleEmoji(**{
                             "identifier": emoji,
                             "role_uuid": db_role.uuid

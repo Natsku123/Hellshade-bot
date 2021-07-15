@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from datetime import datetime
 from typing import Optional
 
 
@@ -9,6 +10,7 @@ class ServerBase(BaseModel):
     channel: Optional[str]
     role_channel: Optional[str]
     role_message: Optional[str]
+    last_seen: Optional[datetime]
 
     class Config:
         orm_mode = True
@@ -24,3 +26,4 @@ class UpdateServer(BaseModel):
     channel: Optional[str]
     role_channel: Optional[str]
     role_message: Optional[str]
+    last_seen: Optional[datetime]

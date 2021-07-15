@@ -1,4 +1,5 @@
-from graphene import relay, ObjectType, Schema, Field, String, Int, Boolean, List
+from graphene import relay, ObjectType, Schema, Field, String, Int, Boolean, \
+    List, DateTime
 from graphene_sqlalchemy import SQLAlchemyConnectionField
 from core.database.schemas.graphql.levels import Level
 from core.database.schemas.graphql.servers import Server
@@ -26,7 +27,8 @@ class Query(ObjectType):
         discord_id=String(),
         name=String(),
         server_exp=Int(),
-        channel=String()
+        channel=String(),
+        last_seen=DateTime()
     )
     member = List(
         Member,
