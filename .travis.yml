@@ -16,14 +16,20 @@ stages:
 jobs:
   include:
     - stage: build
-      name: Build latest
+      name: "Build latest bot"
       python: 3.9
       script:
           - docker build -t "$REGISTRY/$REPO:latest" .
           - docker push "$REGISTRY/$REPO:latest"
+    - stage: build
+      name: "Build latest backend"
+      script:
           - cd backend/
           - docker build -t "$REGISTRY/$REPO-backend:latest" .
           - docker push "$REGISTRY/$REPO-backend:latest"
-          - cd ../frontend/
+    - stage: build
+      name: "Build latest frontend"
+      script:
+          - cd frontend/
           - docker build -t "$REGISTRY/$REPO-frontend:latest" .
           - docker push "$REGISTRY/$REPO-frontend:latest"
