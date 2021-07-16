@@ -23,19 +23,22 @@ env:
 
 
 jobs:
-  lint:
+  eslint:
     runs-on: ubuntu-latest
+    name: Frontend Eslint
+    defaults:
+      run:
+        working-directory: ./frontend
     steps:
-      - name: Go to correct directory
-        run: cd ./frontend
       - uses: actions/checkout@v2
       - name: Install modules
         run: yarn
       - name: Run ESLint
         run: eslint "src/**/*.{js,vue}"
 
-  build:
+  build-bot:
     runs-on: ubuntu-latest
+    name: Build bot Docker image
     permissions:
       contents: read
       packages: write
@@ -70,6 +73,26 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.metabot.outputs.tags }}
           labels: ${{ steps.metabot.outputs.labels }}
+
+  build-backend:
+    runs-on: ubuntu-latest
+    name: Build backend Docker image
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      # Login against a Docker registry except on PR
+      # https://github.com/docker/login-action
+      - name: Log into registry ${{ env.REGISTRY }}
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@28218f9b04b4f3f62068d7b6ce6ca5b26e35336c
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USER }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
           
       # Extract metadata (tags, labels) for Docker
       # https://github.com/docker/metadata-action
@@ -88,7 +111,27 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.metabackend.outputs.tags }}
           labels: ${{ steps.metabackend.outputs.labels }}
-          
+
+  build-frontend:
+    needs: [eslint]
+    runs-on: ubuntu-latest
+    name: Build frontend Docker image
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      # Login against a Docker registry except on PR
+      # https://github.com/docker/login-action
+      - name: Log into registry ${{ env.REGISTRY }}
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@28218f9b04b4f3f62068d7b6ce6ca5b26e35336c
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USER }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
           
       # Extract metadata (tags, labels) for Docker
       # https://github.com/docker/metadata-action
