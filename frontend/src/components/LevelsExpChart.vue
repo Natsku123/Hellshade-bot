@@ -167,6 +167,8 @@ export default {
                 }
               }
             });
+            // TODO fix?
+            // eslint-disable-next-line vue/no-mutating-props
             this.options.scales.yAxes[1].ticks.max = max;
             this.chartdata.labels.forEach(label => {
               const levelValue = Number(label.split(" ")[1]);

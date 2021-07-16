@@ -2,10 +2,16 @@
   <v-card>
     <v-card-title class="title">{{ member.player.name }}</v-card-title>
     <v-card-subtitle v-if="member.level" class="text-left">
-      Level {{ member.level.value }} <span v-if="member.server"> at <strong>{{ member.server.name }}</strong></span>
+      Level {{ member.level.value }}
+      <span v-if="member.server">
+        at <strong>{{ member.server.name }}</strong>
+      </span>
     </v-card-subtitle>
     <v-card-subtitle v-else class="text-left">
-      Level 0 <span v-if="member.server"> at <strong>{{ member.server.name }}</strong></span>
+      Level 0
+      <span v-if="member.server">
+        at <strong>{{ member.server.name }}</strong>
+      </span>
     </v-card-subtitle>
     <div v-if="nextLevel" class="text-left px-4">
       <v-row>
@@ -14,7 +20,8 @@
         </v-col>
         <v-spacer />
         <v-col md="auto" class="pb-0">
-          {{ nextLevel.exp - member.exp }} exp to <strong>Level {{ nextLevel.value }}</strong>
+          {{ nextLevel.exp - member.exp }} exp to
+          <strong>Level {{ nextLevel.value }}</strong>
         </v-col>
       </v-row>
       <v-row>
@@ -79,5 +86,4 @@ export default {
 };
 </script>
 
-<style scoped>
-</style>
+<style scoped></style>

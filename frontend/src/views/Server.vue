@@ -7,7 +7,7 @@
     </v-row>
     <v-row>
       <v-col>
-        Last seen: {{ (new Date(server.lastSeen)).toLocaleString() }}
+        Last seen: {{ new Date(server.lastSeen).toLocaleString() }}
       </v-col>
     </v-row>
     <v-row justify="center">
