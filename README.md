@@ -1,5 +1,5 @@
 # Hellshade-bot
-[![Build Status](https://travis-ci.com/Natsku123/Hellshade-bot.svg?branch=main)](https://travis-ci.com/Natsku123/Hellshade-bot)
+[![Docker](https://github.com/Natsku123/Hellshade-bot/actions/workflows/docker-publish.yml/badge.svg?branch=main)](https://github.com/Natsku123/Hellshade-bot/actions/workflows/docker-publish.yml)
 
 Discord bot with some Dota 2 related features and Discord activity experience.
 
