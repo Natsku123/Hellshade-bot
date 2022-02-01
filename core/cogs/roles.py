@@ -1,3 +1,4 @@
+import discord.partial_emoji
 from discord.ext import commands, tasks
 from discord import Embed, Forbidden, HTTPException, utils
 from core.config import settings, logger
@@ -297,7 +298,9 @@ class Roles(commands.Cog):
 
                         # Add new reactions to message
                         for e in emojis:
-                            if e not in old_emojis:
+                            if isinstance(e, discord.partial_emoji.PartialEmoji):
+                                logger.error(f"Emoji not cannot be used! Emoji: {e}")
+                            elif e not in old_emojis:
                                 await message.add_reaction(e)
 
                         logger.info(f"Message updated for {server.name}.")
@@ -460,14 +463,40 @@ class Roles(commands.Cog):
                     db_role = role_crud.create(session, obj_in=role)
 
                     if emoji is not None:
-                        if hasattr(emoji, 'name'):
-                            emoji = emoji.name
-                            
+                        converter = commands.EmojiConverter()
+                        pconverter = commands.PartialEmojiConverter()
+
+                        try:
+                            # Convert into actual emoji
+                            e = await converter.convert(
+                                ctx, emoji
+                            )
+                        except commands.EmojiNotFound:
+                            # Try partial emoji instead
+                            try:
+                                e = await pconverter.convert(
+                                    ctx, emoji
+                                )
+                            except commands.PartialEmojiConversionFailure:
+                                # Assume that it is an unicode emoji
+                                e = emoji
+                    else:
+                        e = None
+
+                    if e is not None and not isinstance(e, discord.partial_emoji.PartialEmoji):
+
+                        if hasattr(e, 'name'):
+                            e = e.name
+
                         db_e = CreateRoleEmoji(**{
-                            "identifier": emoji,
+                            "identifier": e,
                             "role_uuid": db_role.uuid
                         })
                         emoji_crud.create(session, obj_in=db_e)
+                    elif isinstance(emoji, discord.partial_emoji.PartialEmoji):
+                        embed.description = "**Note**: Role was created" \
+                                            " without an emoji, because the bot " \
+                                            "cannot use provided emoji..."
                     else:
                         embed.description = "**Note**: Role was created" \
                                             " without an emoji, so it " \
