@@ -1,6 +1,6 @@
 import signal
-import discord
-from discord.ext import commands
+import nextcord
+from nextcord.ext import commands
 
 from core.cogs.core import Core
 from core.cogs.games import Games
@@ -19,7 +19,7 @@ def main():
     '''
 
     # Intents for experience tracking etc.
-    intents = discord.Intents.all()
+    intents = nextcord.Intents.all()
 
     bot = commands.Bot(
         command_prefix=commands.when_mentioned_or('!', '/'),

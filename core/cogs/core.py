@@ -1,4 +1,4 @@
-from discord.ext import commands, tasks
+from nextcord.ext import commands, tasks
 from datetime import datetime
 
 from core.database.utils import get_create

@@ -1,5 +1,5 @@
 from uuid import UUID
-from discord.ext.commands import Context
+from nextcord.ext.commands import Context
 from sqlalchemy.orm import Session
 from typing import Optional, Union, Tuple
 

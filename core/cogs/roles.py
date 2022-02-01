@@ -1,6 +1,6 @@
-import discord.partial_emoji
-from discord.ext import commands, tasks
-from discord import Embed, Forbidden, HTTPException, utils
+import nextcord.partial_emoji
+from nextcord.ext import commands, tasks
+from nextcord import Embed, Forbidden, HTTPException, utils
 from core.config import settings, logger
 from core.database import Session, session_lock
 from core.database.crud.roles import role as role_crud, \
@@ -298,7 +298,7 @@ class Roles(commands.Cog):
 
                         # Add new reactions to message
                         for e in emojis:
-                            if isinstance(e, discord.partial_emoji.PartialEmoji):
+                            if isinstance(e, nextcord.partial_emoji.PartialEmoji):
                                 logger.error(f"Emoji not cannot be used! Emoji: {e}")
                             elif e not in old_emojis:
                                 await message.add_reaction(e)
@@ -317,7 +317,7 @@ class Roles(commands.Cog):
             embed = Embed()
             embed.set_author(name=self.__bot.user.name,
                              url=settings.URL,
-                             icon_url=self.__bot.user.avatar_url)
+                             icon_url=self.__bot.user.avatar.url)
             embed.title = "Invalid role command! `!help role` for more info"
             embed.timestamp = datetime.utcnow()
             await ctx.send(embed=embed)
@@ -333,7 +333,7 @@ class Roles(commands.Cog):
         embed = Embed()
         embed.set_author(name=self.__bot.user.name,
                          url=settings.URL,
-                         icon_url=self.__bot.user.avatar_url)
+                         icon_url=self.__bot.user.avatar.url)
         async with session_lock:
             with Session() as session:
                 db_member = get_create_ctx(ctx, session, member_crud)
@@ -382,7 +382,7 @@ class Roles(commands.Cog):
         embed = Embed()
         embed.set_author(name=self.__bot.user.name,
                          url=settings.URL,
-                         icon_url=self.__bot.user.avatar_url)
+                         icon_url=self.__bot.user.avatar.url)
         async with session_lock:
             with Session() as session:
                 db_member = get_create_ctx(ctx, session, member_crud)
@@ -436,7 +436,7 @@ class Roles(commands.Cog):
         embed = Embed()
         embed.set_author(name=self.__bot.user.name,
                          url=settings.URL,
-                         icon_url=self.__bot.user.avatar_url)
+                         icon_url=self.__bot.user.avatar.url)
         async with session_lock:
             with Session() as session:
                 d_role = ctx.guild.get_role(discord_id)
@@ -483,7 +483,7 @@ class Roles(commands.Cog):
                     else:
                         e = None
 
-                    if e is not None and not isinstance(e, discord.partial_emoji.PartialEmoji):
+                    if e is not None and not isinstance(e, nextcord.partial_emoji.PartialEmoji):
 
                         if hasattr(e, 'name'):
                             e = e.name
@@ -493,7 +493,7 @@ class Roles(commands.Cog):
                             "role_uuid": db_role.uuid
                         })
                         emoji_crud.create(session, obj_in=db_e)
-                    elif isinstance(emoji, discord.partial_emoji.PartialEmoji):
+                    elif isinstance(emoji, nextcord.partial_emoji.PartialEmoji):
                         embed.description = "**Note**: Role was created" \
                                             " without an emoji, because the bot " \
                                             "cannot use provided emoji..."
@@ -522,7 +522,7 @@ class Roles(commands.Cog):
         embed = Embed()
         embed.set_author(name=self.__bot.user.name,
                          url=settings.URL,
-                         icon_url=self.__bot.user.avatar_url)
+                         icon_url=self.__bot.user.avatar.url)
         async with session_lock:
             with Session() as session:
                 db_role = role_crud.get_by_discord(session, discord_id)
@@ -557,7 +557,7 @@ class Roles(commands.Cog):
         embed = Embed()
         embed.set_author(name=self.__bot.user.name,
                          url=settings.URL,
-                         icon_url=self.__bot.user.avatar_url)
+                         icon_url=self.__bot.user.avatar.url)
         async with session_lock:
             with Session() as session:
                 db_role = role_crud.get_by_discord(session, discord_id)
@@ -589,7 +589,7 @@ class Roles(commands.Cog):
         embed = Embed()
         embed.set_author(name=self.__bot.user.name,
                          url=settings.URL,
-                         icon_url=self.__bot.user.avatar_url)
+                         icon_url=self.__bot.user.avatar.url)
         async with session_lock:
             with Session() as session:
 

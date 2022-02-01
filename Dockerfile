@@ -1,11 +1,6 @@
-FROM python:3.9-alpine
+FROM python:3.9-slim
 
 LABEL maintainer="Max Mecklin <max@meckl.in>"
-
-RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/community" > /etc/apk/repositories
-RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories
-
-RUN apk update && apk add python3-dev gcc libc-dev postgresql-dev build-base curl
 
 COPY . /bot
 

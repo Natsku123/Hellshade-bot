@@ -1,6 +1,6 @@
 import math
 import datetime
-import discord
+import nextcord
 
 from typing import Tuple
 from core.config import logger
@@ -28,18 +28,18 @@ async def get_admins(bot):
     info = await bot.application_info()
     for team_member in info.team.members:
         if team_member.membership_state == \
-                discord.TeamMembershipState.accepted:
+                nextcord.TeamMembershipState.accepted:
             admins.append(team_member.id)
     return admins
 
 
 def gets_exp(member):
     try:
-        return member.status is not discord.Status.offline and \
+        return member.status is not nextcord.Status.offline and \
                member.voice is not None and \
                len(member.voice.channel.members) > 1 and \
-               member.voice != discord.VoiceState.self_deaf and \
-               member.voice != discord.VoiceState.afk
+               member.voice != nextcord.VoiceState.self_deaf and \
+               member.voice != nextcord.VoiceState.afk
     except AttributeError:
         return False
 

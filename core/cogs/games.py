@@ -1,9 +1,9 @@
-from discord.ext import commands, tasks
+from nextcord.ext import commands, tasks
 import asyncio
 import time
 import datetime
 import random
-import discord
+import nextcord
 import requests
 import re
 from aiohttp import ClientSession
@@ -98,7 +98,7 @@ class Games(commands.Cog):
                             for p in new_posts:
                                 all_new_posts.append(p)
 
-                                embed = discord.Embed()
+                                embed = nextcord.Embed()
 
                                 embed.set_author(
                                     name=f"Steam News - {p['author']}",
@@ -160,7 +160,7 @@ class Games(commands.Cog):
             with open('/files/last_title', 'w') as pfw:
                 pfw.write(latest)
 
-            embed = discord.Embed()
+            embed = nextcord.Embed()
 
             embed.set_author(name="Dota2.com", icon_url="https://1000logos.net/wp-content/uploads/2019/03/Dota-2-Logo.png")
             embed.title = f"New patch **{latest}** found!"
@@ -182,10 +182,10 @@ class Games(commands.Cog):
         :return:
         """
         if ctx.invoked_subcommand is None:
-            embed = discord.Embed()
+            embed = nextcord.Embed()
             embed.set_author(
                 name=self.__bot.user.name, url=settings.URL,
-                icon_url=self.__bot.user.avatar_url
+                icon_url=self.__bot.user.avatar.url
             )
             embed.title = "Invalid steam command! `!help steam` for more info"
             embed.timestamp = datetime.datetime.utcnow()
@@ -200,10 +200,10 @@ class Games(commands.Cog):
         :return:
         """
         if ctx.invoked_subcommand is None:
-            embed = discord.Embed()
+            embed = nextcord.Embed()
             embed.set_author(
                 name=self.__bot.user.name, url=settings.URL,
-                icon_url=self.__bot.user.avatar_url
+                icon_url=self.__bot.user.avatar.url
             )
             embed.title = "Invalid steam news command! `!help steam news` for more info"
             embed.timestamp = datetime.datetime.utcnow()
@@ -225,10 +225,10 @@ class Games(commands.Cog):
                     'channel_id': str(ctx.message.channel.id),
                     'app_id': app_id
                 }))
-                embed = discord.Embed()
+                embed = nextcord.Embed()
                 embed.set_author(name=self.__bot.user.name,
                                  url=settings.URL,
-                                 icon_url=self.__bot.user.avatar_url)
+                                 icon_url=self.__bot.user.avatar.url)
                 embed.title = f"Channel **{ctx.message.channel}** subscribed to Steam App **{sub.app_id}**!"
                 embed.timestamp = datetime.datetime.utcnow()
                 await ctx.send(embed=embed)
@@ -250,10 +250,10 @@ class Games(commands.Cog):
                     old_s = crud_subscription.remove(session, uuid=s.uuid)
                     apps.append(old_s.app_id)
 
-                embed = discord.Embed()
+                embed = nextcord.Embed()
                 embed.set_author(name=self.__bot.user.name,
                                  url=settings.URL,
-                                 icon_url=self.__bot.user.avatar_url)
+                                 icon_url=self.__bot.user.avatar.url)
                 embed.title = f"Cleared subscriptions on **{ctx.message.channel}**."
                 embed.description = "Removed subscriptions for Steam Apps with IDs:"
 
@@ -270,14 +270,14 @@ class Games(commands.Cog):
         hero_name = hero['name']
         hero_image = hero['link']
 
-        embed = discord.Embed()
+        embed = nextcord.Embed()
         embed.title = "You randomed..."
         embed.description = f"Congratulations! You have randomed **{hero_name}**!"
         embed.timestamp = datetime.datetime.utcnow()
         embed.colour = 8161513
         embed.set_author(name=self.__bot.user.name,
                          url=settings.URL,
-                         icon_url=self.__bot.user.avatar_url)
+                         icon_url=self.__bot.user.avatar.url)
         embed.set_image(url=hero_image)
         await ctx.send(embed=embed)
 

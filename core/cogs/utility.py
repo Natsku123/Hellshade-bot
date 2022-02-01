@@ -1,5 +1,5 @@
-from discord.ext import commands, tasks
-import discord
+from nextcord.ext import commands, tasks
+import nextcord
 import datetime
 import json
 import asyncio
@@ -124,10 +124,10 @@ class Utility(commands.Cog):
                             }
                         )
                         if db_member.server.channel is not None:
-                            embed = discord.Embed()
+                            embed = nextcord.Embed()
                             embed.set_author(name=self.__bot.user.name,
                                              url=settings.URL,
-                                             icon_url=self.__bot.user.avatar_url)
+                                             icon_url=self.__bot.user.avatar.url)
                             embed.title = f"**{db_member.player.name}** " \
                                           f"leveled up!"
                             embed.description = f"**{db_member.player.name}" \
@@ -194,10 +194,10 @@ class Utility(commands.Cog):
                             }
                         )
                         if db_member.server.channel is not None:
-                            embed = discord.Embed()
+                            embed = nextcord.Embed()
                             embed.set_author(name=self.__bot.user.name,
                                              url=settings.URL,
-                                             icon_url=self.__bot.user.avatar_url)
+                                             icon_url=self.__bot.user.avatar.url)
                             embed.title = f"**{db_member.player.name}** " \
                                           f"leveled up!"
                             embed.description = f"**{db_member.player.name}" \
@@ -235,7 +235,7 @@ class Utility(commands.Cog):
 
                     top_5 = crud_member.get_top(session, server_obj.uuid, 5)
 
-                    embed = discord.Embed()
+                    embed = nextcord.Embed()
                     embed.title = f"Weekly TOP 5 on **{server_obj.name}**"
                     embed.description = f"More data can be found " \
                                         f"[here]({settings.URL}/servers/" \
@@ -245,7 +245,7 @@ class Utility(commands.Cog):
                     embed.colour = 8161513
                     embed.set_author(name=self.__bot.user.name,
                                      url=settings.URL,
-                                     icon_url=self.__bot.user.avatar_url)
+                                     icon_url=self.__bot.user.avatar.url)
 
                     for member in top_5:
                         embed.add_field(
@@ -356,10 +356,10 @@ class Utility(commands.Cog):
                     )
 
                 for channel in leveled_up:
-                    embed = discord.Embed()
+                    embed = nextcord.Embed()
                     embed.set_author(name=self.__bot.user.name,
                                      url=settings.URL,
-                                     icon_url=self.__bot.user.avatar_url)
+                                     icon_url=self.__bot.user.avatar.url)
                     if len(leveled_up) > 1:
                         embed.title = f"{len(leveled_up)} players leveled up!"
                         embed.description = f"{len(leveled_up)} players " \
@@ -387,10 +387,10 @@ class Utility(commands.Cog):
     @commands.command(pass_context=True, hidden=True, no_pm=True)
     @commands.has_permissions(administrator=True)
     async def generate_levels(self, ctx, up_to=None):
-        embed = discord.Embed()
+        embed = nextcord.Embed()
         embed.set_author(name=self.__bot.user.name,
                          url=settings.URL,
-                         icon_url=self.__bot.user.avatar_url)
+                         icon_url=self.__bot.user.avatar.url)
 
         async with session_lock:
             with Session() as session:
@@ -408,10 +408,10 @@ class Utility(commands.Cog):
     @commands.command(pass_context=True, hidden=True, no_pm=True)
     @commands.has_permissions(administrator=True)
     async def load_dump(self, ctx, filename=None):
-        embed = discord.Embed()
+        embed = nextcord.Embed()
         embed.set_author(name=self.__bot.user.name,
                          url=settings.URL,
-                         icon_url=self.__bot.user.avatar_url)
+                         icon_url=self.__bot.user.avatar.url)
 
         updated = []
         if filename is None:
@@ -550,10 +550,10 @@ class Utility(commands.Cog):
     @commands.command(pass_context=True, hidden=True, no_pm=True)
     @commands.has_permissions(administrator=True)
     async def levels_channel(self, ctx, channel_id=None):
-        embed = discord.Embed()
+        embed = nextcord.Embed()
         embed.set_author(name=self.__bot.user.name,
                          url=settings.URL,
-                         icon_url=self.__bot.user.avatar_url)
+                         icon_url=self.__bot.user.avatar.url)
 
         async with session_lock:
             with Session() as session:
@@ -621,10 +621,10 @@ class Utility(commands.Cog):
     @commands.command(pass_context=True, hidden=True)
     @commands.has_permissions(administrator=True)
     async def get_user(self, ctx, user_id=None):
-        embed = discord.Embed()
+        embed = nextcord.Embed()
         embed.set_author(
             name=self.__bot.user.name, url=settings.URL,
-            icon_url=self.__bot.user.avatar_url
+            icon_url=self.__bot.user.avatar.url
         )
         if ctx.message.author.id not in await get_admins(self.__bot):
             embed.title = "Unauthorized"
@@ -633,11 +633,11 @@ class Utility(commands.Cog):
                                 "command :/"
         else:
             if user_id is None:
-                user = discord.utils.get(
+                user = nextcord.utils.get(
                     self.__bot.get_all_members(), id=ctx.message.author.id
                 )
             else:
-                user = discord.utils.get(
+                user = nextcord.utils.get(
                     self.__bot.get_all_members(), id=user_id
                 )
 
@@ -674,7 +674,7 @@ class Utility(commands.Cog):
                     )
                     top_5 = crud_member.get_top(session, server.uuid, value)
 
-                    embed = discord.Embed()
+                    embed = nextcord.Embed()
                     embed.title = f"**TOP {value}** on **{server.name}**"
                     embed.description = f"More data can be found [here]" \
                                         f"({settings.URL}/servers/{server.uuid})."
@@ -683,7 +683,7 @@ class Utility(commands.Cog):
                     embed.colour = Colors.other
                     embed.set_author(name=self.__bot.user.name,
                                      url=settings.URL,
-                                     icon_url=self.__bot.user.avatar_url)
+                                     icon_url=self.__bot.user.avatar.url)
 
                     for member in top_5:
                         if member.level is not None:
@@ -755,7 +755,7 @@ class Utility(commands.Cog):
                                 })
                             )
 
-                        embed = discord.Embed()
+                        embed = nextcord.Embed()
                         embed.title = f"**{member.player.name}** on " \
                                       f"**{member.server.name}**"
                         embed.description = f"More data can be found [here]" \
@@ -768,7 +768,7 @@ class Utility(commands.Cog):
                         embed.colour = Colors.success
                         embed.set_author(name=self.__bot.user.name,
                                          url=settings.URL,
-                                         icon_url=self.__bot.user.avatar_url)
+                                         icon_url=self.__bot.user.avatar.url)
                         # embed.add_field(
                         #     name=f"**Level {next_level.value - 1}**",
                         #     value=f"Experience: **{member.exp}/{next_level.exp}**",
@@ -814,10 +814,10 @@ class Utility(commands.Cog):
                             session, db_obj=player, obj_in={'hidden': False}
                         )
 
-                    embed = discord.Embed()
+                    embed = nextcord.Embed()
                     embed.set_author(name=self.__bot.user.name,
                                      url=settings.URL,
-                                     icon_url=self.__bot.user.avatar_url)
+                                     icon_url=self.__bot.user.avatar.url)
 
                     embed.title = "Success!"
                     embed.description = f"You have successfully registered " \
