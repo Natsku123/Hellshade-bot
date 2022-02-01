@@ -79,7 +79,7 @@ def get_create(
 
 
 def get_create_ctx(
-        ctx: Context, db: Session, crud, overrides: Optional[dict]={}
+        ctx: Context, db: Session, crud, overrides=None
 ):
     """
     Create object if it doesn't exist with context
@@ -90,6 +90,8 @@ def get_create_ctx(
     :return: object
     """
 
+    if overrides is None:
+        overrides = {}
     obj = None
     player_uuid = None
     server_uuid = None

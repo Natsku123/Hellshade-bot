@@ -14,9 +14,12 @@ from core.database.schemas.players import CreatePlayer
 from core.database.schemas.servers import CreateServer
 from core.database.schemas.members import CreateMember
 from core.database.schemas.levels import CreateLevel
-from core.database.utils import get_create
+from core.database.schemas.commands import CreateCommand, UpdateCommand
+from core.database.utils import get_create, get_create_ctx
 from core.utils import progress_bar, level_exp, process_exp, get_admins, \
     Colors, next_weekday, gets_exp
+
+import core.database.crud.commands
 
 
 class Utility(commands.Cog):
@@ -826,3 +829,91 @@ class Utility(commands.Cog):
                     embed.colour = Colors.success
 
                     await ctx.send(embed=embed)
+
+    @commands.group(pass_context=True, no_pm=True, hidden=True)
+    @commands.has_permissions(administrator=True)
+    async def slash_commands(self, ctx):
+        if ctx.invoked_subcommand is None:
+            embed = nextcord.Embed()
+            embed.set_author(name=self.__bot.user.name,
+                             url=settings.URL,
+                             icon_url=self.__bot.user.avatar.url)
+            embed.title = "Invalid role command! `!help slash_commands` for more info"
+            embed.timestamp = datetime.datetime.utcnow()
+            await ctx.send(embed=embed)
+
+    @slash_commands.command(pass_context=True, no_pm=True, hidden=True)
+    @commands.has_permissions(administrator=True)
+    async def enable(self, ctx, command: str):
+        embed = nextcord.Embed()
+        embed.set_author(name=self.__bot.user.name,
+                         url=settings.URL,
+                         icon_url=self.__bot.user.avatar.url)
+
+        async with session_lock:
+            with Session() as session:
+                db_server = get_create_ctx(ctx, session, crud_server)
+                db_command = core.database.crud.commands.command.get_by_server_and_name(
+                    session, db_server.uuid, command
+                )
+                if db_command is None:
+                    db_command = core.database.crud.commands.command.create(
+                        session,
+                        obj_in=CreateCommand(**{
+                            "name": command,
+                            "server_uuid": db_server.uuid,
+                            "status": True
+                        })
+                    )
+                else:
+                    db_command = core.database.crud.commands.command.update(
+                        session,
+                        db_obj=db_command,
+                        obj_in=UpdateCommand(**{
+                            "status": True
+                        })
+                    )
+
+                embed.description = f"Command `{db_command.name}` enabled for `{db_server.name}`!"
+                embed.colour = nextcord.Colour.green()
+
+        embed.timestamp = datetime.datetime.utcnow()
+        await ctx.send(embed=embed)
+
+    @slash_commands.command(pass_context=True, no_pm=True, hidden=True)
+    @commands.has_permissions(administrator=True)
+    async def disable(self, ctx, command: str):
+        embed = nextcord.Embed()
+        embed.set_author(name=self.__bot.user.name,
+                         url=settings.URL,
+                         icon_url=self.__bot.user.avatar.url)
+
+        async with session_lock:
+            with Session() as session:
+                db_server = get_create_ctx(ctx, session, crud_server)
+                db_command = core.database.crud.commands.command.get_by_server_and_name(
+                    session, db_server.uuid, command
+                )
+                if command is None:
+                    db_command = core.database.crud.commands.command.create(
+                        session,
+                        obj_in=CreateCommand(**{
+                            "name": command,
+                            "server_uuid": db_server.uuid,
+                            "status": False
+                        })
+                    )
+                else:
+                    db_command = core.database.crud.commands.command.update(
+                        session,
+                        db_obj=db_command,
+                        obj_in=UpdateCommand(**{
+                            "status": False
+                        })
+                    )
+
+                embed.description = f"Command `{db_command.name}` disabled for `{db_server.name}`!"
+                embed.colour = nextcord.Colour.green()
+
+        embed.timestamp = datetime.datetime.utcnow()
+        await ctx.send(embed=embed)
