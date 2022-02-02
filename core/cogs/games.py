@@ -6,12 +6,14 @@ import random
 import nextcord
 import requests
 import re
+from discord_ui import cogs, SlashInteraction
 from aiohttp import ClientSession
 from pathlib import Path
 
 from core.config import settings, logger
 
 from core.database import session_lock, Session
+from core.database.utils import get_guild_ids
 from core.database.models.steamnews import Post, Subscription
 from core.database.crud.steamnews import post as crud_post, subscription as crud_subscription
 from core.database.schemas.steamnews import CreateSubscription, CreatePost
@@ -265,6 +267,24 @@ class Games(commands.Cog):
 
     @commands.command(pass_context=True)
     async def dota_random(self, ctx):
+        index = random.randint(0, len(self.__heroes))
+        hero = self.__heroes[index]
+        hero_name = hero['name']
+        hero_image = hero['link']
+
+        embed = nextcord.Embed()
+        embed.title = "You randomed..."
+        embed.description = f"Congratulations! You have randomed **{hero_name}**!"
+        embed.timestamp = datetime.datetime.utcnow()
+        embed.colour = 8161513
+        embed.set_author(name=self.__bot.user.name,
+                         url=settings.URL,
+                         icon_url=self.__bot.user.avatar.url)
+        embed.set_image(url=hero_image)
+        await ctx.send(embed=embed)
+
+    @cogs.slash_command('dota_random', "Get a truly random Dota 2 hero!", guild_ids=get_guild_ids('dota_random'))
+    async def slash_dota_random(self, ctx):
         index = random.randint(0, len(self.__heroes))
         hero = self.__heroes[index]
         hero_name = hero['name']

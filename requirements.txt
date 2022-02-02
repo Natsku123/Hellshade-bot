@@ -1,4 +1,5 @@
 nextcord[speed]>=2.0.0a6
+discord-ui
 requests~=2.25.0
 bs4~=0.0.1
 sqlalchemy>=1.4.0b1

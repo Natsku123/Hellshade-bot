@@ -1,6 +1,7 @@
 import signal
 import nextcord
 from nextcord.ext import commands
+from discord_ui import UI
 
 from core.cogs.core import Core
 from core.cogs.games import Games
@@ -22,11 +23,13 @@ def main():
     intents = nextcord.Intents.all()
 
     bot = commands.Bot(
-        command_prefix=commands.when_mentioned_or('!', '/'),
+        command_prefix=commands.when_mentioned_or('!', '?'),
         description=description,
         owner_id=settings.BOT_OWNER,
         intents=intents
     )
+
+    ui = UI(bot)
 
     bot.add_cog(Core(bot))
     bot.add_cog(Utility(bot, settings.ADMINS))

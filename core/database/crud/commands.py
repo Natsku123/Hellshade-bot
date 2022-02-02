@@ -22,7 +22,7 @@ class CRUDCommand(CRUDBase[Command, schemas.CreateCommand, schemas.UpdateCommand
         result = db.execute(query)
         return result.scalars().first()
 
-    def get_enabled_by_name(self, db: Session, name: str) -> Optional[ModelType]:
+    def get_enabled_by_name(self, db: Session, name: str) -> list[ModelType]:
         """
         Get enabled commands by command name
         :param db: Database Session

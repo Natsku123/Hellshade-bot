@@ -1,6 +1,6 @@
 from uuid import UUID
 from nextcord.ext.commands import Context
-from sqlalchemy.orm import Session
+from core.database import Session
 from typing import Optional, Union, Tuple
 
 from core.database.crud.servers import CRUDServer
@@ -11,6 +11,7 @@ from core.database.crud.members import CRUDMember
 from core.database.crud.members import member as crud_member
 from core.database.crud.levels import CRUDLevel
 from core.database.crud.levels import level as crud_level
+from core.database.crud.commands import command as crud_command
 from core.database.crud.roles import role as crud_role
 from core.database.schemas.servers import CreateServer
 from core.database.schemas.players import CreatePlayer
@@ -228,3 +229,10 @@ def remove_from_role(
     db.commit()
 
     return True, db_role.discord_id
+
+
+def get_guild_ids(command: str):
+    with Session() as session:
+        db_commands = crud_command.get_enabled_by_name(session, command)
+        for c in db_commands:
+            yield int(crud_server.get(session, c.uuid).discord_id)
