@@ -7,4 +7,4 @@ class CRUDPlayer(CRUDBase[Player, schemas.CreatePlayer, schemas.UpdatePlayer]):
     pass
 
 
-player = CRUDPlayer(Player)
+player: CRUDPlayer = CRUDPlayer(Player)

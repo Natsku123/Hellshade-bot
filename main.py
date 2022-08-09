@@ -1,7 +1,7 @@
 import signal
 import nextcord
 from nextcord.ext import commands
-from discord_ui import UI
+#from discord_ui import UI
 
 from core.cogs.core import Core
 from core.cogs.games import Games
@@ -29,7 +29,7 @@ def main():
         intents=intents
     )
 
-    ui = UI(bot)
+    #ui = UI(bot)
 
     bot.add_cog(Core(bot))
     bot.add_cog(Utility(bot, settings.ADMINS))

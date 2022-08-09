@@ -35,6 +35,25 @@ class CRUDRole(CRUDBase[Role, schemas.CreateRole, schemas.UpdateRole]):
         result = db.execute(query)
         return result.scalars().all()
 
+    def get_multi_by_query(
+            self, db: Session, server_uuid: UUID, q: str = None
+    ) -> List[ModelType]:
+        """
+        Get roles by server_uuid
+        :param db:
+        :param server_uuid:
+        :param q: Role name query
+        :return:
+        """
+
+        if q and q != "":
+            query = select(self.model).where(self.model.server_uuid == server_uuid)\
+                .where(self.model.name.ilike(f'%{q}%'))
+        else:
+            query = select(self.model).where(self.model.server_uuid == server_uuid)
+        result = db.execute(query)
+        return result.scalars().all()
+
 
 class CRUDRoleEmoji(
     CRUDBase[RoleEmoji, schemas.CreateRoleEmoji, schemas.UpdateRoleEmoji]

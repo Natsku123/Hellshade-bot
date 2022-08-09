@@ -6,7 +6,7 @@ import random
 import nextcord
 import requests
 import re
-from discord_ui import cogs, SlashInteraction
+#from discord_ui import cogs, SlashInteraction
 from aiohttp import ClientSession
 from pathlib import Path
 
@@ -283,7 +283,7 @@ class Games(commands.Cog):
         embed.set_image(url=hero_image)
         await ctx.send(embed=embed)
 
-    @cogs.slash_command('dota_random', "Get a truly random Dota 2 hero!", guild_ids=get_guild_ids('dota_random'))
+    @nextcord.slash_command('dota_random', "Get a truly random Dota 2 hero!")
     async def slash_dota_random(self, ctx):
         index = random.randint(0, len(self.__heroes))
         hero = self.__heroes[index]
