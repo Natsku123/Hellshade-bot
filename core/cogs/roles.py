@@ -29,7 +29,7 @@ async def desync(it):
 
 
 def like_role(
-    l: list[Union[nextcord.Role, Role]], s: str
+        l: list[Union[nextcord.Role, Role]], s: str
 ) -> list[Union[nextcord.Role, Role]]:
     if not s or s == "":
         return l
@@ -38,7 +38,7 @@ def like_role(
 
 
 async def autocomplete_context(
-    session: Session, ctx: nextcord.Interaction
+        session: Session, ctx: nextcord.Interaction
 ) -> tuple[Optional[Server], Player, Optional[Member]]:
     server = server_crud.get_by_discord(session, ctx.guild.id)
     player = players.player.get_by_discord(session, ctx.user.id)
@@ -64,7 +64,7 @@ async def autocomplete_context(
 
 
 async def assignable_roles(
-    cog: commands.Cog, ctx: nextcord.Interaction, value: str
+        cog: commands.Cog, ctx: nextcord.Interaction, value: str
 ) -> list[tuple[str, Union[str, int]]]:
     """
     Get assignable roles for server and member.
@@ -90,7 +90,7 @@ async def assignable_roles(
 
 
 async def removable_roles(
-    cog: commands.Cog, ctx: nextcord.Interaction, value: str
+        cog: commands.Cog, ctx: nextcord.Interaction, value: str
 ) -> list[tuple[str, Union[str, int]]]:
     """
     Get removable roles for server and member.
@@ -100,7 +100,6 @@ async def removable_roles(
     :param value: Autocomplete current value
     :return: list of name-role pairs
     """
-
 
     logger.debug(f"{cog.qualified_name}")
     with Session() as session:
@@ -116,7 +115,7 @@ async def removable_roles(
 
 
 async def creatable_roles(
-    cog: commands.Cog, ctx: nextcord.Interaction, value: str
+        cog: commands.Cog, ctx: nextcord.Interaction, value: str
 ) -> list[nextcord.Role]:
     """
     Get creatable roles for server.
@@ -143,7 +142,7 @@ async def creatable_roles(
 
 
 async def deletable_roles(
-    cog: commands.Cog, ctx: nextcord.Interaction, value: str
+        cog: commands.Cog, ctx: nextcord.Interaction, value: str
 ) -> list[tuple[str, Union[str, int]]]:
     """
     Get deletable roles for server.
@@ -166,7 +165,7 @@ async def deletable_roles(
 
 
 async def available_emojis(
-    cog: commands.Cog, ctx: nextcord.Interaction, value: str
+        cog: commands.Cog, ctx: nextcord.Interaction, value: str
 ) -> list[str]:
     """
     Get available emojis for bot and server.
@@ -385,8 +384,8 @@ class Roles(commands.Cog):
 
                     # Update role message if it exists
                     if (
-                        server.role_message is not None
-                        and server.role_channel is not None
+                            server.role_message is not None
+                            and server.role_channel is not None
                     ):
                         channel = self.__bot.get_channel(int(server.role_channel))
 
@@ -471,7 +470,7 @@ class Roles(commands.Cog):
 
                         logger.info(f"Message updated for {server.name}.")
 
-    @nextcord.slash_command("role", "Role management", guild_ids=[790711365236555787])
+    @nextcord.slash_command("role", "Role management")
     async def slash_role(self, ctx: nextcord.Interaction):
         """
         Role management, more on !help role
@@ -510,11 +509,11 @@ class Roles(commands.Cog):
 
     @slash_role.subcommand(name="add")
     async def slash_add(
-        self,
-        interaction: nextcord.Interaction,
-        role: nextcord.Role = SlashOption(
-            name="role", description="Role to add.", required=True
-        ),
+            self,
+            interaction: nextcord.Interaction,
+            role: nextcord.Role = SlashOption(
+                name="role", description="Role to add.", required=True
+            ),
     ):
         """
         Assign role for author
@@ -622,11 +621,11 @@ class Roles(commands.Cog):
 
     @slash_role.subcommand(name="remove")
     async def slash_remove(
-        self,
-        interaction: nextcord.Interaction,
-        role: nextcord.Role = SlashOption(
-            name="role", description="Role to remove.", required=True
-        ),
+            self,
+            interaction: nextcord.Interaction,
+            role: nextcord.Role = SlashOption(
+                name="role", description="Role to remove.", required=True
+            ),
     ):
         """
         Remove role from author
@@ -736,23 +735,24 @@ class Roles(commands.Cog):
     @slash_role.subcommand(name="create")
     @application_checks.has_permissions(administrator=True)
     async def slash_create(
-        self,
-        interaction: nextcord.Interaction,
-        # role: str = SlashOption(
-        #    name="role", description="Role to be made assignable.",
-        #    required=True, autocomplete=True, autocomplete_callback=creatable_roles
-        # ),
-        role: nextcord.Role = SlashOption(
-            name="role", description="Role to be made assignable.", required=True
-        ),
-        description: str = SlashOption(
-            name="description",
-            description="Describe the purpose of the role.",
-            required=True,
-        ),
-        emoji: str = SlashOption(
-            name="emoji", description="Emoji to be used with reactions.", required=False
-        ),
+            self,
+            interaction: nextcord.Interaction,
+            # role: str = SlashOption(
+            #    name="role", description="Role to be made assignable.",
+            #    required=True, autocomplete=True, autocomplete_callback=creatable_roles
+            # ),
+            role: nextcord.Role = SlashOption(
+                name="role", description="Role to be made assignable.", required=True
+            ),
+            description: str = SlashOption(
+                name="description",
+                description="Describe the purpose of the role.",
+                required=True,
+            ),
+            emoji: str = SlashOption(
+                name="emoji", description="Emoji to be used with reactions.",
+                required=False
+            ),
     ):
         """
         Create assignable role
@@ -797,7 +797,7 @@ class Roles(commands.Cog):
                     logger.debug(emoji)
 
                     if emoji is not None and not isinstance(
-                        emoji, nextcord.partial_emoji.PartialEmoji
+                            emoji, nextcord.partial_emoji.PartialEmoji
                     ):
 
                         if isinstance(emoji, str):
@@ -892,7 +892,7 @@ class Roles(commands.Cog):
                         e = None
 
                     if e is not None and not isinstance(
-                        e, nextcord.partial_emoji.PartialEmoji
+                            e, nextcord.partial_emoji.PartialEmoji
                     ):
 
                         if hasattr(e, "name"):
@@ -924,20 +924,20 @@ class Roles(commands.Cog):
     @slash_role.subcommand(name="update")
     @application_checks.has_permissions(administrator=True)
     async def slash_update(
-        self,
-        interaction: nextcord.Interaction,
-        role: str = SlashOption(
-            name="role",
-            description="Role to update.",
-            required=True,
-            autocomplete=True,
-            autocomplete_callback=deletable_roles,
-        ),
-        description: str = SlashOption(
-            name="description",
-            description="Describe the purpose of the role.",
-            required=True,
-        ),
+            self,
+            interaction: nextcord.Interaction,
+            role: str = SlashOption(
+                name="role",
+                description="Role to update.",
+                required=True,
+                autocomplete=True,
+                autocomplete_callback=deletable_roles,
+            ),
+            description: str = SlashOption(
+                name="description",
+                description="Describe the purpose of the role.",
+                required=True,
+            ),
     ):
         """
         Update role description
@@ -1011,11 +1011,11 @@ class Roles(commands.Cog):
     @slash_role.subcommand(name="delete")
     @application_checks.has_permissions(administrator=True)
     async def slash_delete(
-        self,
-        interaction: nextcord.Interaction,
-        role: nextcord.Role = SlashOption(
-            name="role", description="Role to delete.", required=True
-        ),
+            self,
+            interaction: nextcord.Interaction,
+            role: nextcord.Role = SlashOption(
+                name="role", description="Role to delete.", required=True
+            ),
     ):
         """
         Delete assignable role

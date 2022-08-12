@@ -283,7 +283,25 @@ class Games(commands.Cog):
         embed.set_image(url=hero_image)
         await ctx.send(embed=embed)
 
-    @nextcord.slash_command('dota_random', "Get a truly random Dota 2 hero!")
+    @nextcord.slash_command("dota", "Dota commands")
+    async def slash_dota(self, ctx: nextcord.Interaction):
+        """
+        Dota root command
+
+        :param ctx: Context
+        :return:
+        """
+        embed = nextcord.Embed()
+        embed.set_author(
+            name=self.__bot.user.name,
+            url=settings.URL,
+            icon_url=self.__bot.user.avatar.url,
+        )
+        embed.title = "Dota root command, please select proper subcommand: `random`"
+        embed.timestamp = datetime.datetime.utcnow()
+        await ctx.send(embed=embed, ephemeral=True)
+
+    @slash_dota.subcommand("random", "Get a truly random Dota 2 hero!")
     async def slash_dota_random(self, ctx):
         index = random.randint(0, len(self.__heroes))
         hero = self.__heroes[index]
