@@ -10,6 +10,7 @@ from core.cogs.core import Core
 from core.cogs.games import Games
 from core.cogs.utility import Utility
 from core.cogs.roles import Roles
+from core.cogs.gw2 import Gw2
 
 from core.config import settings, logger
 
@@ -36,6 +37,7 @@ def main():
     bot.add_cog(Core(bot))
     bot.add_cog(Utility(bot, settings.ADMINS))
     bot.add_cog(Games(bot))
+    bot.add_cog(Gw2(bot))
     bot.add_cog(Roles(bot))
 
     @bot.event
