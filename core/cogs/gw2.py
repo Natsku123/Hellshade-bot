@@ -161,8 +161,8 @@ async def get_upgrade_status(api_session: Api, guild_id: str, upgrade_id: int):
               for x in upgrade.costs if x.type is pygw2.core.models.GuildUpgradeCostType.Item}
     result_collectibles = {x.name: x.count for x in upgrade.costs if x.type is pygw2.core.models.GuildUpgradeCostType.Collectible or x.type is pygw2.core.models.GuildUpgradeCostType.Currency}
 
-    if 'Guild favor' in result_collectibles:
-        result_collectibles['Guild favor'] = f"{guild.favor if guild.favor < result_collectibles['Guild favor'] else result_collectibles['Guild favor']} / {result_collectibles['Guild favor']}"
+    if 'Guild Favor' in result_collectibles:
+        result_collectibles['Guild Favor'] = f"{guild.favor if guild.favor < result_collectibles['Guild Favor'] else result_collectibles['Guild Favor']} / {result_collectibles['Guild Favor']}"
     if 'Aetherium' in result_collectibles:
         result_collectibles['Aetherium'] = f"{guild.aetherium if int(guild.aetherium) < int(result_collectibles['Aetherium']) else result_collectibles['Aetherium']} / {result_collectibles['Aetherium']}"
 
