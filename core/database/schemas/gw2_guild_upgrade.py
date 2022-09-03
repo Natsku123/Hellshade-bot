@@ -5,10 +5,10 @@ from pydantic import BaseModel
 
 class Gw2GuildUpgradeBase(BaseModel):
     name: str
-    server_uuid: UUID
+    gw2_id: str
     gw2_guild_uuid: UUID
     message_id: Optional[str] = None
-    completed_on: bool = False
+    completed: bool = False
 
     class Config:
         orm_mode = True

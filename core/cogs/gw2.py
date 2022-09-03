@@ -1,3 +1,5 @@
+import asyncio
+
 import pygw2.core.models
 from pygw2.api import Api
 
@@ -18,6 +20,7 @@ from core.database.crud.servers import server as server_crud
 from core.database.models.gw2_guild import Gw2Guild
 from core.database.schemas.gw2_api_key import CreateGw2ApiKey, UpdateGw2ApiKey
 from core.database.schemas.gw2_guild import CreateGw2Guild, UpdateGw2Guild
+from core.database.schemas.gw2_guild_upgrade import CreateGw2GuildUpgrade
 from core.database.utils import get_create_ctx
 
 
@@ -39,7 +42,7 @@ def get_server_guild(session: Session, interaction: nextcord.Interaction) -> Gw2
     return gw2_guild.get_by_server_uuid(session, server.uuid)
 
 
-async def get_available_guild_upgrades(api_session: Api, guild_id: str) -> list[str]:
+async def get_available_guild_upgrades(api_session: Api, guild_id: str) -> tuple[list[str], list[str]]:
     """
     Get available guild upgrades for given guild with given api session
 
@@ -47,6 +50,9 @@ async def get_available_guild_upgrades(api_session: Api, guild_id: str) -> list[
     :param guild_id: GW2 Guild ID
     :return: List of upgrade names
     """
+
+    # Get Guild info
+    guild_info = await api_session.guild(guild_id).get()
 
     # Get all available upgrades
     all_upgrades = numpy.array(await api_session.guild().upgrades())
@@ -58,7 +64,7 @@ async def get_available_guild_upgrades(api_session: Api, guild_id: str) -> list[
     # Match all available upgrades
     available_upgrade_ids = list(all_upgrades[~numpy.isin(all_upgrades, completed_upgrade_ids)])
     available_upgrades = await api_session.guild().upgrades(*available_upgrade_ids)
-    available_upgrades = numpy.array([x for x in available_upgrades if x.type is pygw2.core.models.GuildUpgradeType.Unlock])
+    available_upgrades = numpy.array([x for x in available_upgrades if x.type is pygw2.core.models.GuildUpgradeType.Unlock and x.required_level and x.required_level <= guild_info.level])
     prerequisites_done = []
 
     # Filter upgrades to those that have prerequisites completed
@@ -72,8 +78,8 @@ async def get_available_guild_upgrades(api_session: Api, guild_id: str) -> list[
 
         prerequisites_done.append(numpy.all(numpy.isin(prerequisites, completed_upgrade_ids)))
 
-    # Return names of the upgrades
-    return [x.name for x in available_upgrades[prerequisites_done]]
+    # Return names and ids of the upgrades
+    return [x.name for x in available_upgrades[prerequisites_done]], [x.id for x in available_upgrades[prerequisites_done]]
 
 
 async def add_gw2_guild(db: Session, api_session: Api, name: str, server_uuid: UUID, owner_uuid: Optional[UUID] = None) -> Optional[Gw2Guild]:
@@ -118,9 +124,9 @@ async def available_guild_upgrades(state: "Gw2", interaction: nextcord.Interacti
         else:
             api_session = get_server_api_session(session, interaction)
 
-            available_upgrades = await get_available_guild_upgrades(api_session, gw2guild.guild_gw2_id)
+            available_upgrades, available_upgrades_ids = await get_available_guild_upgrades(api_session, gw2guild.guild_gw2_id)
 
-            state.upgrades[gw2guild.guild_gw2_id] = (datetime.datetime.now(), available_upgrades)
+            state.upgrades[gw2guild.guild_gw2_id] = (datetime.datetime.now(), available_upgrades, available_upgrades_ids)
 
         if data != "":
             result = list(filter(lambda x: data.lower() in x.lower(), available_upgrades))
@@ -133,21 +139,190 @@ async def available_guild_upgrades(state: "Gw2", interaction: nextcord.Interacti
         return result
 
 
+async def get_upgrade_status(api_session: Api, guild_id: str, upgrade_id: int):
+
+    # Get Guild info
+    guild = await api_session.guild(guild_id).get()
+
+    # Get Upgrade info
+    upgrade = await api_session.guild().upgrades(upgrade_id)
+
+    # Get items in treasury
+    treasure = numpy.array(await api_session.guild(guild_id).treasury())
+
+    # Match costs to treasury
+    cost_ids = [x.item_id for x in upgrade.costs if x.type is pygw2.core.models.GuildUpgradeCostType.Item]
+    treasure_ids = [x.item_id for x in treasure]
+    needed_treasures = treasure[numpy.isin(treasure_ids, cost_ids)]
+    needed_treasures = {x.item_id: x for x in needed_treasures}
+
+    # Get materials needed in text
+    result_items = {x.name: (f"{needed_treasures[x.item_id].count if needed_treasures[x.item_id].count < x.count else x.count} / {x.count}" if x.item_id in needed_treasures else f"0 / {x.count}")
+              for x in upgrade.costs if x.type is pygw2.core.models.GuildUpgradeCostType.Item}
+    result_collectibles = {x.name: x.count for x in upgrade.costs if x.type is pygw2.core.models.GuildUpgradeCostType.Collectible or x.type is pygw2.core.models.GuildUpgradeCostType.Currency}
+
+    if 'Guild favor' in result_collectibles:
+        result_collectibles['Guild favor'] = f"{guild.favor if guild.favor < result_collectibles['Guild favor'] else result_collectibles['Guild favor']} / {result_collectibles['Guild favor']}"
+    if 'Aetherium' in result_collectibles:
+        result_collectibles['Aetherium'] = f"{guild.aetherium if int(guild.aetherium) < int(result_collectibles['Aetherium']) else result_collectibles['Aetherium']} / {result_collectibles['Aetherium']}"
+
+    return result_items | result_collectibles
+
+
 class Gw2(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.__bot = bot
-        self.upgrades: dict[str, tuple[datetime.datetime, list[str]]] = {}
+        self.upgrades: dict[str, tuple[datetime.datetime, list[str], list[str]]] = {}
 
         self.update_available_upgrades.start()
+        self.upgrade_update.start()
+
+    @tasks.loop(hours=24)
+    async def delete_completed_upgrades(self):
+        await self.__bot.wait_until_ready()
+        now = datetime.datetime.now()
+        d_reset = datetime.datetime(year=now.year, month=now.month, day=now.day, hour=0, minute=0, second=0) + datetime.timedelta(days=1)
+
+        if (d_reset - now) > datetime.timedelta(minutes=5):
+            await asyncio.sleep((d_reset - now).total_seconds())
+
+        async with session_lock:
+            with Session() as session:
+
+                # Go through all visible guilds
+                for guild in self.__bot.guilds:
+                    server = server_crud.get_by_discord(session, guild.id)
+
+                    # Skip if server is not found
+                    if server is None:
+                        continue
+
+                    gw2guild = gw2_guild.get_by_server_uuid(session, server.uuid)
+
+                    # Skip if GW2 Guild is not found on server
+                    if gw2guild is None or gw2guild.guild_upgrade_channel is None:
+                        continue
+
+                    channel = self.__bot.get_channel(int(gw2guild.guild_upgrade_channel))
+
+                    # Continue if channel wasn't found
+                    if channel is None:
+                        logger.info(
+                            f"No guild upgrades channel found for {server.name}.")
+                        continue
+
+                    completed = gw2_guild_upgrade.get_completed_by_guild_uuid(session, gw2guild.uuid)
+
+                    for i, upgrade in enumerate(completed):
+
+                        # Channel must not be bloated with messages
+                        message = nextcord.utils.find(
+                            lambda m: (m.id == int(upgrade.message_id)),
+                            await channel.history(limit=100).flatten(),
+                        )
+
+                        # Skip if message wasn't found
+                        if message is None:
+                            continue
+
+                        await message.delete(delay=0.1*i)
+                        gw2_guild_upgrade.remove(session, uuid=gw2guild.uuid)
 
     @tasks.loop(minutes=30)
     async def upgrade_update(self):
-        # TODO
-        pass
+        await self.__bot.wait_until_ready()
+
+        async with session_lock:
+            with Session() as session:
+
+                # Go through all visible guilds
+                for guild in self.__bot.guilds:
+                    server = server_crud.get_by_discord(session, guild.id)
+
+                    # Skip if server is not found
+                    if server is None:
+                        continue
+
+                    gw2guild = gw2_guild.get_by_server_uuid(session, server.uuid)
+
+                    # Skip if GW2 Guild is not found on server
+                    if gw2guild is None or gw2guild.guild_upgrade_channel is None:
+                        continue
+
+                    gw2apikey = gw2_api_key.get_by_player_uuid(session, gw2guild.guild_owner_uuid)
+
+                    # Skip if GW2 Owner Api key is not found for server
+                    if gw2apikey is None:
+                        continue
+
+                    api_session = Api(api_key=gw2apikey.key)
+
+                    # Get already completed upgrades
+                    completed_upgrades = await api_session.guild(gw2guild.guild_gw2_id).upgraded()
+                    completed_upgrade_ids = [x.id for x in completed_upgrades if x.type is pygw2.core.models.GuildUpgradeType.Unlock]
+
+                    channel = self.__bot.get_channel(int(gw2guild.guild_upgrade_channel))
+
+                    # Continue if channel wasn't found
+                    if channel is None:
+                        logger.info(f"No guild upgrades channel found for {server.name}.")
+                        continue
+
+                    guild_upgrades = gw2_guild_upgrade.get_ongoing_by_guild_uuid(session, gw2guild.uuid)
+
+                    for upgrade in guild_upgrades:
+
+                        if upgrade.gw2_id in completed_upgrade_ids:
+                            updated_upgrade = {
+                                "name": upgrade.name,
+                                "gw2_id": upgrade.id,
+                                "gw2_guild_uuid": upgrade.gw2_guild_uuid,
+                                "message_id": upgrade.message_id,
+                                "completed": True
+                            }
+                            upgrade = gw2_guild_upgrade.update(session, db_obj=upgrade, obj_in=updated_upgrade)
+
+                        if upgrade.message_id is None:
+                            continue
+
+                        embed = nextcord.Embed()
+                        embed.set_author(
+                            name=f"{gw2guild.name}",
+                            url=settings.URL,
+                            icon_url=f"https://emblem.werdes.net/emblem/{gw2guild.guild_gw2_id}",
+                        )
+                        embed.timestamp = datetime.datetime.utcnow()
+
+                        # Channel must not be bloated with messages
+                        message = nextcord.utils.find(
+                            lambda m: (m.id == int(upgrade.message_id)),
+                            await channel.history(limit=100).flatten(),
+                        )
+
+                        # Skip if message wasn't found
+                        if message is None:
+                            continue
+
+                        upgrade_info = await api_session.guild().upgrades(upgrade.gw2_id)
+
+                        upgrade_status = await get_upgrade_status(api_session, gw2guild.guild_gw2_id, int(upgrade_info.id))
+
+                        embed.title = upgrade_info.name
+                        embed.description = upgrade_info.description
+                        embed.set_thumbnail(upgrade_info.icon)
+
+                        if not upgrade.completed:
+                            for k, v in upgrade_status.items():
+                                embed.add_field(name=k, value=v)
+                        else:
+                            embed.add_field(name="Status", value="Completed")
+
+                        await message.edit(embed=embed)
+
+                    logger.info(f"Guild upgrades updated for {guild.name}.")
 
     @tasks.loop(minutes=30)
     async def update_available_upgrades(self):
-        await self.__bot.wait_until_ready()
         logger.info("Update available upgrades for Guild Wars 2 Guilds")
 
         with Session() as session:
@@ -157,9 +332,9 @@ class Gw2(commands.Cog):
                 gw2apikey = gw2_api_key.get_by_player_uuid(session, gw2guild.guild_owner_uuid)
                 api_session = Api(api_key=gw2apikey.key)
 
-                available_upgrades = await get_available_guild_upgrades(api_session, gw2guild.guild_gw2_id)
+                available_upgrades, available_upgrades_ids = await get_available_guild_upgrades(api_session, gw2guild.guild_gw2_id)
 
-                self.upgrades[gw2guild.guild_gw2_id] = (datetime.datetime.now(), available_upgrades)
+                self.upgrades[gw2guild.guild_gw2_id] = (datetime.datetime.now(), available_upgrades, available_upgrades_ids)
                 logger.info(f"Upgrades for {gw2guild.name} found.")
 
     @nextcord.slash_command("gw2", "Guild Wars 2 commands")
@@ -338,10 +513,122 @@ class Gw2(commands.Cog):
     #     embed.timestamp = datetime.datetime.utcnow()
     #    await ctx.send(embed=embed, ephemeral=True)
 
+    @gw2_guild.subcommand("init_upgrades", "Initialize Guild Upgrades channel")
+    async def gw2_guild_init_upgrades(self, ctx: nextcord.Interaction, channel: nextcord.TextChannel = nextcord.SlashOption(
+        description="Channel to post Guild Upgrades"
+    )):
+        embed = nextcord.Embed()
+        embed.set_author(
+            name=self.__bot.user.name,
+            url=settings.URL,
+            icon_url=self.__bot.user.avatar.url,
+        )
+        embed.timestamp = datetime.datetime.utcnow()
+        async with session_lock:
+            with Session() as session:
+                gw2guild = get_server_guild(session, ctx)
+                updated_guild = {
+                    "name": gw2guild.name,
+                    "server_uuid": gw2guild.server_uuid,
+                    "guild_gw2_id": gw2guild.guild_gw2_id,
+                    "guild_upgrade_channel": str(channel.id)
+                }
+                gw2guild = gw2_guild.update(session, db_obj=gw2guild, obj_in=UpdateGw2Guild(**updated_guild))
+                embed.title = f"Guild upgrades initialized: {gw2guild.name}!"
+                embed.colour = nextcord.Colour.green()
+                embed.set_image(url=f"https://emblem.werdes.net/emblem/{gw2guild.guild_gw2_id}")
+
+        await ctx.send(embed=embed, ephemeral=True)
+
     # @gw2_guild_upgrades.subcommand("track", "Track Guild Wars 2 Guild Upgrade")
     @gw2_guild.subcommand("track_upgrade", "Track Guild Wars 2 Guild Upgrade")
     async def gw2_guild_upgrades_track(self, ctx: nextcord.Interaction, upgrade: str = nextcord.SlashOption(
         description="Name of the Guild Upgrade",
         autocomplete_callback=available_guild_upgrades
     )):
-        pass
+        embed = nextcord.Embed()
+        embed.set_author(
+            name=self.__bot.user.name,
+            url=settings.URL,
+            icon_url=self.__bot.user.avatar.url,
+        )
+        embed.timestamp = datetime.datetime.utcnow()
+
+        confirmation = nextcord.Embed()
+        confirmation.set_author(
+            name=self.__bot.user.name,
+            url=settings.URL,
+            icon_url=self.__bot.user.avatar.url,
+        )
+        confirmation.timestamp = datetime.datetime.utcnow()
+
+        async with session_lock:
+            with Session() as session:
+                gw2guild = get_server_guild(session, ctx)
+
+                # If Guild is not found, return
+                if gw2guild is None:
+                    embed.title = "Guild Wars 2 Guild not found!"
+                    embed.colour = nextcord.Colour.red()
+                    return await ctx.send(embed=embed, ephemeral=True)
+
+                embed.set_author(
+                    name=f"{gw2guild.name}",
+                    url=settings.URL,
+                    icon_url=f"https://emblem.werdes.net/emblem/{gw2guild.guild_gw2_id}",
+                )
+
+                if gw2guild.guild_upgrade_channel is None:
+                    embed.title = "Guild Upgrades channel not initialized!"
+                    embed.colour = nextcord.Colour.red()
+                    return await ctx.send(embed=embed, ephemeral=True)
+
+                channel = self.__bot.get_channel(int(gw2guild.guild_upgrade_channel))
+
+                message = await channel.send(embed=embed)
+
+                fetched_upgrades = self.upgrades.get(gw2guild.guild_gw2_id)
+
+                if fetched_upgrades is not None:
+                    try:
+                        upgrade_index = fetched_upgrades[1].index(upgrade)
+                    except ValueError:
+                        upgrade_index = None
+                else:
+                    upgrade_index = None
+
+                if upgrade_index is not None:
+                    upgrade_id = fetched_upgrades[2][upgrade_index]
+                    api_session = get_server_api_session(session, ctx)
+
+                    upgrade_info = await api_session.guild().upgrades(upgrade_id)
+
+                    new_upgrade = {
+                        "name": upgrade_info.name,
+                        "gw2_id": upgrade_info.id,
+                        "gw2_guild_uuid": gw2guild.uuid,
+                        "message_id": str(message.id)
+                    }
+
+                    gw2_guild_upgrade.create(session, obj_in=CreateGw2GuildUpgrade(**new_upgrade))
+
+                    upgrade_status = await get_upgrade_status(api_session, gw2guild.guild_gw2_id, int(upgrade_info.id))
+
+                    embed.title = upgrade_info.name
+                    embed.description = upgrade_info.description
+                    embed.set_thumbnail(upgrade_info.icon)
+
+                    for k, v in upgrade_status.items():
+                        embed.add_field(name=k, value=v)
+
+                    await message.edit(embed=embed)
+
+                    confirmation.title = "Upgrade sent to upgrades channel!"
+                    confirmation.colour = nextcord.Colour.green()
+
+                else:
+                    confirmation.title = "Guild upgrade tracking failed!"
+                    confirmation.description = f"Guild upgrade `{upgrade}` not found or upgrades not loaded!"
+                    confirmation.colour = nextcord.Colour.red()
+
+        await ctx.send(embed=confirmation, ephemeral=True)
