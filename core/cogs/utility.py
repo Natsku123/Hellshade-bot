@@ -213,14 +213,15 @@ class Utility(commands.Cog):
                                 int(db_member.server.channel)
                             ).send(embed=embed)
 
-    @tasks.loop(hours=168)
+    @tasks.loop(time=datetime.time(hour=12, minute=5))
     async def weekly_top5(self):
         await self.__bot.wait_until_ready()
         now = datetime.datetime.now()
-        next_sat = next_weekday(now, 5).replace(hour=12, minute=0, second=0)
 
-        delta = next_sat - now
-        await asyncio.sleep(delta.total_seconds())
+        # If not saturday, skip
+        if now.weekday() != 5:
+            return
+
         async with session_lock:
             with Session() as session:
                 for server in self.__bot.guilds:

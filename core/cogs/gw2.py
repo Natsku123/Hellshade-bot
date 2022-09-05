@@ -1,4 +1,5 @@
 import asyncio
+import random
 
 import pygw2.core.models
 from pygw2.api import Api
@@ -15,12 +16,15 @@ from core.database import Session, session_lock
 from core.database.crud.gw2_api_key import gw2_api_key
 from core.database.crud.gw2_guild import gw2_guild
 from core.database.crud.gw2_guild_upgrade import gw2_guild_upgrade
+from core.database.crud.gw2_daily_sub import gw2_daily_sub
 from core.database.crud.players import player as player_crud
 from core.database.crud.servers import server as server_crud
+from core.database.models.gw2_daily_sub import DailyType
 from core.database.models.gw2_guild import Gw2Guild
 from core.database.schemas.gw2_api_key import CreateGw2ApiKey, UpdateGw2ApiKey
 from core.database.schemas.gw2_guild import CreateGw2Guild, UpdateGw2Guild
 from core.database.schemas.gw2_guild_upgrade import CreateGw2GuildUpgrade
+from core.database.schemas.gw2_daily_sub import CreateGw2DailySub
 from core.database.utils import get_create_ctx
 
 
@@ -176,15 +180,116 @@ class Gw2(commands.Cog):
 
         self.update_available_upgrades.start()
         self.upgrade_update.start()
+        self.update_dailies.start()
 
-    @tasks.loop(hours=24)
+    @tasks.loop(time=datetime.time(hour=0, minute=5))
+    async def update_dailies(self):
+        await self.__bot.wait_until_ready()
+
+        api_session = Api()
+
+        root_dailies = await api_session.achievements.daily()
+        strikes = await api_session.achievements.categories(250)
+        lws = await api_session.achievements.categories(238, 243, 330, 321)
+
+        with Session() as session:
+            # Go through all visible guilds
+            for guild in self.__bot.guilds:
+                server = server_crud.get_by_discord(session, guild.id)
+
+                # Skip if server is not found
+                if server is None:
+                    continue
+
+                daily_subs = gw2_daily_sub.get_by_server_uuid(session, server.uuid)
+
+                for sub in daily_subs:
+                    channel = self.__bot.get_channel(int(sub.channel_id))
+
+                    # Channel must not be bloated with messages
+                    message = nextcord.utils.find(
+                        lambda m: (m.id == int(sub.message_id)),
+                        await channel.history(limit=100).flatten(),
+                    )
+
+                    embed = nextcord.Embed()
+                    embed.set_author(
+                        name="Guild Wars 2 Dailies",
+                        url=settings.URL,
+                        icon_url="https://wiki.guildwars2.com/images/1/14/Daily_Achievement.png"
+                    )
+                    embed.timestamp = datetime.datetime.utcnow()
+
+                    icon_url = None
+
+                    if sub.daily_type == DailyType.PvE or sub.daily_type == DailyType.PvP or sub.daily_type == DailyType.WvW or sub.daily_type == DailyType.Fractals:
+                        root_dailies = await api_session.achievements.daily()
+
+                        if sub.daily_type == DailyType.PvE:
+                            dailies = root_dailies.pve
+                            title = "Daily PvE Achievements"
+                        elif sub.daily_type == DailyType.PvP:
+                            dailies = root_dailies.pvp
+                            title = "Daily PvP Achievements"
+                        elif sub.daily_type == DailyType.WvW:
+                            dailies = root_dailies.wvw
+                            title = "Daily WvW Achievements"
+                        elif sub.daily_type == DailyType.Fractals:
+                            dailies = root_dailies.fractals
+                            title = "Daily Fractal Achievements"
+                        else:
+                            title = "Unknown"
+                            dailies = []
+
+                        if len(dailies) > 0:
+                            icon_url = dailies[-1].achievement.icon
+
+                        embed.title = title
+
+                        description = ""
+                        for d in dailies:
+                            description += f"{d.achievement.name}\n"
+
+                        embed.description = description
+
+                    elif sub.daily_type == DailyType.Strikes:
+                        strikes = await api_session.achievements.categories(250)
+                        embed.title = "Daily Priority Strikes"
+                        icon_url = strikes.icon
+
+                        description = ""
+                        for d in strikes.achievements:
+                            description += f"{d.name}\n"
+
+                        embed.description = description
+
+                    elif sub.daily_type == DailyType.LivingWorld:
+                        lws = await api_session.achievements.categories(238, 243, 330,
+                                                                        321)
+                        embed.title = "Daily Living World"
+                        icons = [x.icon for x in lws if x.icon is not None]
+
+                        icon_url = random.choice(icons)
+
+                        description = ""
+
+                        for c in lws:
+                            description += f"**{c.name}**\n"
+                            for d in c.achievements:
+                                description += f"{d.name}\n"
+                            description += "\n"
+
+                        embed.description = description
+
+                    if icon_url is None:
+                        icon_url = "https://wiki.guildwars2.com/images/1/14/Daily_Achievement.png"
+
+                    embed.set_thumbnail(icon_url)
+                    await message.edit(embed=embed)
+
+    @tasks.loop(time=datetime.time(hour=0, minute=0))
     async def delete_completed_upgrades(self):
         await self.__bot.wait_until_ready()
-        now = datetime.datetime.now()
-        d_reset = datetime.datetime(year=now.year, month=now.month, day=now.day, hour=0, minute=0, second=0) + datetime.timedelta(days=1)
-
-        if (d_reset - now) > datetime.timedelta(minutes=5):
-            await asyncio.sleep((d_reset - now).total_seconds())
 
         async with session_lock:
             with Session() as session:
@@ -514,6 +619,7 @@ class Gw2(commands.Cog):
     #    await ctx.send(embed=embed, ephemeral=True)
 
     @gw2_guild.subcommand("init_upgrades", "Initialize Guild Upgrades channel")
+    @commands.has_permissions(administrator=True)
     async def gw2_guild_init_upgrades(self, ctx: nextcord.Interaction, channel: nextcord.TextChannel = nextcord.SlashOption(
         description="Channel to post Guild Upgrades"
     )):
@@ -542,6 +648,7 @@ class Gw2(commands.Cog):
 
     # @gw2_guild_upgrades.subcommand("track", "Track Guild Wars 2 Guild Upgrade")
     @gw2_guild.subcommand("track_upgrade", "Track Guild Wars 2 Guild Upgrade")
+    @commands.has_permissions(administrator=True)   # TODO better permissions ?
     async def gw2_guild_upgrades_track(self, ctx: nextcord.Interaction, upgrade: str = nextcord.SlashOption(
         description="Name of the Guild Upgrade",
         autocomplete_callback=available_guild_upgrades
@@ -632,3 +739,245 @@ class Gw2(commands.Cog):
                     confirmation.colour = nextcord.Colour.red()
 
         await ctx.send(embed=confirmation, ephemeral=True)
+
+    @gw2.subcommand("daily", "Interact with Guild Wars 2 Dailies")
+    async def gw2_daily(self, ctx: nextcord.Interaction):
+        embed = nextcord.Embed()
+        embed.set_author(
+            name=self.__bot.user.name,
+            url=settings.URL,
+            icon_url=self.__bot.user.avatar.url,
+        )
+        embed.title = "Guild Wars 2 DAILY root command"
+        embed.timestamp = datetime.datetime.utcnow()
+        await ctx.send(embed=embed, ephemeral=True)
+
+    @gw2_daily.subcommand("get", "Get GW2 Dailies")
+    async def gw2_daily_get(self, ctx: nextcord.Interaction, category: str = nextcord.SlashOption(
+        description="Daily category",
+        choices=["PvE", "PvP", "WvW", "Fractals", "Strikes", "Living World"]
+    )):
+        if category == "PvP":
+            cat = DailyType.PvP
+        elif category == "WvW":
+            cat = DailyType.WvW
+        elif category == "Fractals":
+            cat = DailyType.Fractals
+        elif category == "Strikes":
+            cat = DailyType.Strikes
+        elif category == "Living World":
+            cat = DailyType.LivingWorld
+        else:
+            cat = DailyType.PvE
+
+        api_session = Api()
+
+        embed = nextcord.Embed()
+        embed.set_author(
+            name="Guild Wars 2 Dailies",
+            url=settings.URL,
+            icon_url="https://wiki.guildwars2.com/images/1/14/Daily_Achievement.png"
+        )
+        embed.timestamp = datetime.datetime.utcnow()
+
+        icon_url = None
+
+        if cat == DailyType.PvE or cat == DailyType.PvP or cat == DailyType.WvW or cat == DailyType.Fractals:
+            root_dailies = api_session.achievements.daily()
+            await ctx.response.defer()
+
+            root_dailies = await root_dailies
+
+            if cat == DailyType.PvE:
+                dailies = root_dailies.pve
+                title = "Daily PvE Achievements"
+            elif cat == DailyType.PvP:
+                dailies = root_dailies.pvp
+                title = "Daily PvP Achievements"
+            elif cat == DailyType.WvW:
+                dailies = root_dailies.wvw
+                title = "Daily WvW Achievements"
+            elif cat == DailyType.Fractals:
+                dailies = root_dailies.fractals
+                title = "Daily Fractal Achievements"
+            else:
+                title = "Unknown"
+                dailies = []
+
+            if len(dailies) > 0:
+                icon_url = dailies[-1].achievement.icon
+
+            embed.title = title
+
+            description = ""
+            for d in dailies:
+                description += f"{d.achievement.name}\n"
+
+            embed.description = description
+
+        elif cat == DailyType.Strikes:
+            strikes = await api_session.achievements.categories(250)
+            embed.title = "Daily Priority Strikes"
+            icon_url = strikes.icon
+
+            description = ""
+            for d in strikes.achievements:
+                description += f"{d.name}\n"
+
+            embed.description = description
+
+        elif cat == DailyType.LivingWorld:
+            lws = await api_session.achievements.categories(238, 243, 330, 321)
+            embed.title = "Daily Living World"
+            icons = [x.icon for x in lws if x.icon is not None]
+
+            icon_url = random.choice(icons)
+
+            description = ""
+
+            for c in lws:
+                description += f"**{c.name}**\n"
+                for d in c.achievements:
+                    description += f"{d.name}\n"
+                description += "\n"
+
+            embed.description = description
+
+        if icon_url is None:
+            icon_url = "https://wiki.guildwars2.com/images/1/14/Daily_Achievement.png"
+
+        embed.set_thumbnail(icon_url)
+
+        await ctx.send(embed=embed)
+
+    @gw2_daily.subcommand("subscribe", "Subscribe to GW2 daily updates")
+    @commands.has_permissions(administrator=True)
+    async def gw2_daily_subscribe(self, ctx: nextcord.Interaction, channel: nextcord.TextChannel = nextcord.SlashOption(
+        description="Channel to post daily messages"
+    ), category: str = nextcord.SlashOption(
+        description="Daily category",
+        choices=["PvE", "PvP", "WvW", "Fractals", "Strikes", "Living World"]
+    )):
+        if category == "PvP":
+            cat = DailyType.PvP
+        elif category == "WvW":
+            cat = DailyType.WvW
+        elif category == "Fractals":
+            cat = DailyType.Fractals
+        elif category == "Strikes":
+            cat = DailyType.Strikes
+        elif category == "Living World":
+            cat = DailyType.LivingWorld
+        else:
+            cat = DailyType.PvE
+
+        confirmation = nextcord.Embed()
+        confirmation.set_author(
+            name=self.__bot.user.name,
+            url=settings.URL,
+            icon_url=self.__bot.user.avatar.url,
+        )
+        confirmation.timestamp = datetime.datetime.utcnow()
+
+        async with session_lock:
+            with Session() as session:
+                server = get_create_ctx(ctx, session, server_crud)
+                current_sub = gw2_daily_sub.get_by_category(session, server.uuid, cat)
+
+                if current_sub is not None:
+                    confirmation.title = "Subscription for this server already exists!"
+                    confirmation.colour = nextcord.Colour.red()
+                    return await ctx.send(embed=confirmation, ephemeral=True)
+
+                api_session = Api()
+
+                embed = nextcord.Embed()
+                embed.set_author(
+                    name="Guild Wars 2 Dailies",
+                    url=settings.URL,
+                    icon_url="https://wiki.guildwars2.com/images/1/14/Daily_Achievement.png"
+                )
+                embed.timestamp = datetime.datetime.utcnow()
+
+                icon_url = None
+
+                if cat == DailyType.PvE or cat == DailyType.PvP or cat == DailyType.WvW or cat == DailyType.Fractals:
+                    root_dailies = api_session.achievements.daily()
+                    await ctx.response.defer()
+
+                    root_dailies = await root_dailies
+
+                    if cat == DailyType.PvE:
+                        dailies = root_dailies.pve
+                        title = "Daily PvE Achievements"
+                    elif cat == DailyType.PvP:
+                        dailies = root_dailies.pvp
+                        title = "Daily PvP Achievements"
+                    elif cat == DailyType.WvW:
+                        dailies = root_dailies.wvw
+                        title = "Daily WvW Achievements"
+                    elif cat == DailyType.Fractals:
+                        dailies = root_dailies.fractals
+                        title = "Daily Fractal Achievements"
+                    else:
+                        title = "Unknown"
+                        dailies = []
+
+                    if len(dailies) > 0:
+                        icon_url = dailies[-1].achievement.icon
+
+                    embed.title = title
+
+                    description = ""
+                    for d in dailies:
+                        description += f"{d.achievement.name}\n"
+
+                    embed.description = description
+
+                elif cat == DailyType.Strikes:
+                    strikes = await api_session.achievements.categories(250)
+                    embed.title = "Daily Priority Strikes"
+                    icon_url = strikes.icon
+
+                    description = ""
+                    for d in strikes.achievements:
+                        description += f"{d.name}\n"
+
+                    embed.description = description
+
+                elif cat == DailyType.LivingWorld:
+                    lws = await api_session.achievements.categories(238, 243, 330, 321)
+                    embed.title = "Daily Living World"
+                    icons = [x.icon for x in lws if x.icon is not None]
+
+                    icon_url = random.choice(icons)
+
+                    description = ""
+
+                    for c in lws:
+                        description += f"**{c.name}**\n"
+                        for d in c.achievements:
+                            description += f"{d.name}\n"
+                        description += "\n"
+
+                    embed.description = description
+
+                if icon_url is None:
+                    icon_url = "https://wiki.guildwars2.com/images/1/14/Daily_Achievement.png"
+
+                embed.set_thumbnail(icon_url)
+
+                message = await channel.send(embed=embed)
+
+                new_sub = {
+                    "server_uuid": server.uuid,
+                    "channel_id": str(channel.id),
+                    "message_id": str(message.id),
+                    "daily_type": cat,
+                }
+
+                gw2_daily_sub.create(session, obj_in=CreateGw2DailySub(**new_sub))
+
+        confirmation.title = f"Subscription for daily {category} created!"
+        confirmation.colour = nextcord.Colour.green()
+        return await ctx.send(embed=confirmation, ephemeral=True)

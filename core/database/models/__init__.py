@@ -10,4 +10,5 @@ from core.database.models.commands import Command
 from core.database.models.gw2_api_key import Gw2ApiKey
 from core.database.models.gw2_guild import Gw2Guild
 from core.database.models.gw2_guild_upgrade import Gw2GuildUpgrade
+from core.database.models.gw2_daily_sub import Gw2DailySub, DailyType
 
