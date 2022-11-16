@@ -29,7 +29,7 @@ class Games(commands.Cog):
         self.patch_notes.start()
         self.get_steam_news.start()
 
-    @tasks.loop(hours=24)
+    @tasks.loop(time=datetime.time(hour=0, minute=0))
     async def update_heroes(self):
         await self.__bot.wait_until_ready()
         logger.info("Fetching Dota 2 heroes...")
