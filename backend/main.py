@@ -2,8 +2,8 @@ import io
 import cairosvg
 from fastapi import FastAPI, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.graphql import GraphQLApp
 from starlette.responses import StreamingResponse
+from starlette_graphene3 import GraphQLApp, make_graphiql_handler
 
 from core.database.schemas.graphql import schema
 from core.utils.svg import render
@@ -19,7 +19,7 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-app.add_route("/", GraphQLApp(schema=schema))
+app.add_route("/", GraphQLApp(schema=schema, on_get=make_graphiql_handler()))
 
 
 @app.get('/level-image')
