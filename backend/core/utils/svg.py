@@ -14,6 +14,16 @@ def translate(value, leftMin, leftMax, rightMin, rightMax):
     return rightMin + (valueScaled * rightSpan)
 
 
+def render_ip(ip: str):
+    env = Environment(
+        loader=FileSystemLoader('templates')
+    )
+    template = env.get_template('ip_template.svg')
+
+    return template.render(**{
+        "ip": ip
+    })
+
 def render(name: str, current_exp: int, needed_exp: int, level: int, url: str):
     env = Environment(
         loader=FileSystemLoader('templates')
