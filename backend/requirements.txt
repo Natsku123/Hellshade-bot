@@ -4,6 +4,6 @@ graphene>=3
 sqlalchemy==1.4.46
 psycopg2-binary
 jinja2
-cairosvg==2.5.2
+cairosvg==2.7.0
 starlette-graphene3==0.6.0
 promise
