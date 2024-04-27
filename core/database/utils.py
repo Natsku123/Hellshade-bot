@@ -88,7 +88,7 @@ def get_create_ctx(
     :param ctx: Discord Context
     :param db: Database session
     :param crud: Crud-object to be used
-    :param overrides: Override data
+    :param overrides: Override interfaces
     :return: object
     """
 

@@ -7,7 +7,7 @@ class UserBase(BaseModel):
     username: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class CreateUser(UserBase):
@@ -15,8 +15,8 @@ class CreateUser(UserBase):
 
 
 class UpdateUser(BaseModel):
-    username: Optional[str]
-    password: Optional[str]
+    username: str | None
+    password: str | None
 
 
 class User(UserBase):

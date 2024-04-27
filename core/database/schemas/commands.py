@@ -9,13 +9,13 @@ class CommandBase(BaseModel):
     status: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class CreateCommand(BaseModel):
     name: str
     server_uuid: UUID
-    status: Optional[bool] = True
+    status: bool | None = True
 
 
 class UpdateCommand(BaseModel):

@@ -96,10 +96,10 @@ class CRUDBase(Generic[ModelType, CreateType, UpdateType]):
             obj_in: Union[UpdateType, Dict[str, Any]]
     ) -> ModelType:
         """
-        Update data of an object
+        Update interfaces of an object
         :param db: Database Session
         :param db_obj: Object to be updated
-        :param obj_in: Update data
+        :param obj_in: Update interfaces
         :return: Object
         """
 

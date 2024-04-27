@@ -7,13 +7,13 @@ class ServerBase(BaseModel):
     discord_id: str
     name: str
     server_exp: int
-    channel: Optional[str]
-    role_channel: Optional[str]
-    role_message: Optional[str]
-    last_seen: Optional[datetime]
+    channel: str | None = None
+    role_channel: str | None = None
+    role_message: str | None = None
+    last_seen: datetime | None = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class CreateServer(ServerBase):
@@ -21,9 +21,9 @@ class CreateServer(ServerBase):
 
 
 class UpdateServer(BaseModel):
-    name: Optional[str]
-    server_exp: Optional[int]
-    channel: Optional[str]
-    role_channel: Optional[str]
-    role_message: Optional[str]
-    last_seen: Optional[datetime]
+    name: str | None
+    server_exp: int | None
+    channel: str | None
+    role_channel: str | None
+    role_message: str | None
+    last_seen: datetime | None

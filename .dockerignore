@@ -1,6 +1,6 @@
 *.json
 .env
-docker-compose.yml
+docker-compose*.yml
 Dockerfile
 data/
 chromedriver

@@ -4,17 +4,21 @@ from typing import Optional
 
 class PlayerBase(BaseModel):
     discord_id: str
+    steam_id: str
     name: str
     hidden: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class CreatePlayer(PlayerBase):
-    pass
+    discord_id: str
+    name: str
+    hidden: bool
 
 
 class UpdatePlayer(BaseModel):
-    name: Optional[str]
-    hidden: Optional[bool]
+    name: str | None
+    hidden: bool | None
+    steam_id: str | None

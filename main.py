@@ -59,7 +59,7 @@ def main():
         )
         embed.title = "Error running the command!"
         embed.description = f"{exception}"
-        embed.timestamp = datetime.datetime.utcnow()
+        embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
         embed.colour = nextcord.Colour.red()
         await interaction.send(embed=embed, ephemeral=True)
 

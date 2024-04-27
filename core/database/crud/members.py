@@ -45,5 +45,10 @@ class CRUDMember(CRUDBase[Member, schemas.CreateMember, schemas.UpdateMember]):
         result = db.execute(query)
         return result.scalars().first()
 
+    def get_multi_by_server_uuid(self, db: Session, server_uuid: UUID) -> list[ModelType]:
+        query = select(self.model).where(self.model.server_uuid == server_uuid)
+        result = db.execute(query)
+        return result.scalars().all()
+
 
 member = CRUDMember(Member)

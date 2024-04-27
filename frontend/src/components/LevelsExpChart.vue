@@ -128,7 +128,7 @@ export default {
           this.chartdata.datasets[0].data.push(point.y);
         });
       })
-      // Load member data
+      // Load member interfaces
       .then(() => {
         const membersQuery = gql`
           {

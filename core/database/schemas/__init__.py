@@ -12,12 +12,12 @@ class Member(MemberBase):
     player: 'Player'
     server: 'Server'
     level: 'Level'
-    roles: List['Role'] = []
+    roles: list['Role'] = []
 
 
 class Player(PlayerBase):
     uuid: UUID
-    memberships: List['Member'] = []
+    memberships: list['Member'] = []
 
 
 class Level(LevelBase):
@@ -31,7 +31,7 @@ class Server(ServerBase):
 class Role(RoleBase):
     uuid: UUID
     server: 'Server'
-    members: List['Member'] = []
+    members: list['Member'] = []
 
 
 class RoleEmoji(RoleEmojiBase):

@@ -7,10 +7,10 @@ class MemberBase(BaseModel):
     exp: int
     player_uuid: UUID
     server_uuid: UUID
-    level_uuid: Optional[UUID]
+    level_uuid: UUID | None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class CreateMember(MemberBase):
@@ -18,5 +18,5 @@ class CreateMember(MemberBase):
 
 
 class UpdateMember(BaseModel):
-    exp: Optional[int]
-    level_uuid: Optional[UUID]
+    exp: int | None
+    level_uuid: UUID | None

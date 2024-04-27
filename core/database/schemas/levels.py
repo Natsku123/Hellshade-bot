@@ -4,11 +4,11 @@ from typing import Optional
 
 class LevelBase(BaseModel):
     value: int
-    title: Optional[str]
+    title: str | None
     exp: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class CreateLevel(LevelBase):
@@ -16,5 +16,5 @@ class CreateLevel(LevelBase):
 
 
 class UpdateLevel(BaseModel):
-    title: Optional[str]
-    exp: Optional[int]
+    title: str | None
+    exp: int | None

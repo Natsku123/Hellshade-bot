@@ -1,17 +1,18 @@
-FROM python:3.9-slim
+FROM python:3.12-slim
 
 LABEL maintainer="Max Mecklin <max@meckl.in>"
 
-COPY . /bot
-
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN ["chmod", "+x", "/docker-entrypoint.sh"]
-
 WORKDIR /bot
 
-RUN pip3.9 install -r requirements.txt
+COPY ./requirements.txt /bot/requirements.txt
+
+RUN pip3.12 install -r requirements.txt
+
+COPY . /bot
 
 ENV PYTHONPATH "${PYTHONPATH}:/bot"
 
-ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["python3.9", "main.py"]
+RUN ["chmod", "+x", "/bot/docker-entrypoint.sh"]
+
+ENTRYPOINT ["/bot/docker-entrypoint.sh"]
+CMD ["python3.12", "main.py"]

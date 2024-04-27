@@ -2,7 +2,8 @@ import logging
 import os
 from typing import List
 
-from pydantic import BaseSettings, AnyHttpUrl
+from pydantic import AnyHttpUrl
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -12,8 +13,9 @@ class Settings(BaseSettings):
     DATABASE_USER: str = os.environ.get("DB_USER")
     DATABASE_PASSWORD: str = os.environ.get("DB_PASS")
     DATABASE_NAME: str = os.environ.get("DB_NAME")
-    ADMINS: List[int] = os.environ.get('ADMINS').split(",")
+    ADMINS: list[int] = os.environ.get('ADMINS').split(",")
     URL: AnyHttpUrl = os.environ.get('SITE_URL', 'https://bot.hellshade.fi')
+    STEAM_API_KEY: str = os.environ.get('STEAM_API_KEY', "")
 
     class Config:
         case_sensitive = True

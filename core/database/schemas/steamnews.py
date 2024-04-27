@@ -7,7 +7,7 @@ class SubscriptionBase(BaseModel):
     app_id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class PostBase(BaseModel):
@@ -16,7 +16,7 @@ class PostBase(BaseModel):
     content: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class CreateSubscription(SubscriptionBase):
@@ -28,10 +28,10 @@ class CreatePost(PostBase):
 
 
 class UpdateSubscription(BaseModel):
-    channel_id: Optional[str]
-    app_id: Optional[int]
+    channel_id: str | None
+    app_id: int | None
 
 
 class UpdatePost(BaseModel):
-    title: Optional[str]
-    content: Optional[str]
+    title: str | None
+    content: str | None

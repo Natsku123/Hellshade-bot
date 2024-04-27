@@ -1,3 +1,4 @@
+from nextcord import SlashOption
 from nextcord.ext import commands, tasks
 import nextcord
 import datetime
@@ -244,7 +245,7 @@ class Utility(commands.Cog):
                                         f"[here]({settings.URL}/servers/" \
                                         f"{server_obj.uuid})"
                     embed.url = f"{settings.URL}/servers/{server_obj.uuid}/top5"
-                    embed.timestamp = datetime.datetime.utcnow()
+                    embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
                     embed.colour = 8161513
                     embed.set_author(name=self.__bot.user.name,
                                      url=settings.URL,
@@ -297,7 +298,7 @@ class Utility(commands.Cog):
                     base_exp = 5
                     special_multi = 1
 
-                    now = datetime.datetime.utcnow()
+                    now = datetime.datetime.now(datetime.timezone.utc)
 
                     # Weekend double voice experience
                     # Between Friday 15:00 -> Sunday 23:59 (UTC)
@@ -385,7 +386,7 @@ class Utility(commands.Cog):
                     await self.__bot.get_channel(int(channel)).send(
                         embed=embed)
 
-                logger.info("Experience calculated.")
+                logger.debug("Experience calculated.")
 
     @commands.command(pass_context=True, hidden=True, no_pm=True)
     @commands.has_permissions(administrator=True)
@@ -405,7 +406,7 @@ class Utility(commands.Cog):
         embed.description = f"Levels generated up to {len(levels)}!"
         embed.colour = Colors.other
 
-        embed.timestamp = datetime.datetime.utcnow()
+        embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
         await ctx.send(embed=embed)
 
     @commands.command(pass_context=True, hidden=True, no_pm=True)
@@ -428,7 +429,7 @@ class Utility(commands.Cog):
             embed.description = "Be sure that you inserted the right " \
                                 "filename and you have copied the file " \
                                 "into the container!"
-            embed.timestamp = datetime.datetime.utcnow()
+            embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
             await ctx.send(embed=embed)
             return
 
@@ -547,7 +548,7 @@ class Utility(commands.Cog):
         embed.colour = Colors.other
         embed.title = "Members loaded from dump file."
         embed.description = f"Members updated: {len(updated)}"
-        embed.timestamp = datetime.datetime.utcnow()
+        embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
         await ctx.send(embed=embed)
 
     @commands.command(pass_context=True, hidden=True, no_pm=True)
@@ -618,7 +619,7 @@ class Utility(commands.Cog):
                                   "command with the channel_id as an argument."
                         )
 
-        embed.timestamp = datetime.datetime.utcnow()
+        embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
         await ctx.send(embed=embed)
 
     @commands.command(pass_context=True, hidden=True)
@@ -652,7 +653,7 @@ class Utility(commands.Cog):
                             value="**{0.discriminator}**".format(user))
             embed.add_field(name="Bot", value="**{0.bot}**".format(user))
 
-        embed.timestamp = datetime.datetime.utcnow()
+        embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
         await ctx.send(embed=embed)
 
     @commands.command(pass_context=True, no_pm=True, aliases=["top5"])
@@ -682,7 +683,7 @@ class Utility(commands.Cog):
                     embed.description = f"More data can be found [here]" \
                                         f"({settings.URL}/servers/{server.uuid})."
                     embed.url = f"{settings.URL}/servers/{server.uuid}/top5"
-                    embed.timestamp = datetime.datetime.utcnow()
+                    embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
                     embed.colour = Colors.other
                     embed.set_author(name=self.__bot.user.name,
                                      url=settings.URL,
@@ -767,7 +768,7 @@ class Utility(commands.Cog):
                         embed.url = f"{settings.URL}/players/" \
                                     f"{member.player.uuid}/server/" \
                                     f"{member.server.uuid}"
-                        embed.timestamp = datetime.datetime.utcnow()
+                        embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
                         embed.colour = Colors.success
                         embed.set_author(name=self.__bot.user.name,
                                          url=settings.URL,
@@ -794,8 +795,8 @@ class Utility(commands.Cog):
             else:
                 await ctx.send(embed=embed)
 
-    @commands.command(pass_context=True)
-    async def register(self, ctx):
+    @nextcord.slash_command("register", "Register yourself to be shown on bot.hellshade.fi.")
+    async def register(self, ctx: nextcord.Interaction):
         """
         Register yourself to be shown on bot.hellshade.fi.
         :param ctx:
@@ -830,6 +831,99 @@ class Utility(commands.Cog):
 
                     await ctx.send(embed=embed)
 
+    @register.subcommand("steamid", "Register SteamID")
+    async def register_steamid(self, ctx: nextcord.Interaction, steamid: str = SlashOption(
+        name="steamid",
+        description="SteamID to register",
+        required=True,
+    )):
+        async with ctx.message.channel.typing():
+            async with session_lock:
+                with Session() as session:
+                    player = get_create(
+                        session, crud_player, obj_in=CreatePlayer(**{
+                            "discord_id": ctx.message.author.id,
+                            "name": ctx.message.author.name,
+                            "hidden": False
+                        })
+                    )
+
+                    crud_player.update(session, db_obj=player, obj_in={'steam_id': steamid})
+
+                    embed = nextcord.Embed()
+                    embed.set_author(
+                        name=self.__bot.user.name,
+                        url=settings.URL,
+                        icon_url=self.__bot.user.avatar.url,
+                    )
+                    embed.title = "Success!"
+                    embed.description = "Your SteamID has been updated!"
+                    embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
+                    embed.colour = Colors.success
+                    await ctx.send(embed=embed, ephemeral=True)
+
+    @nextcord.slash_command("unregister", "Hides you from bot.hellshade.fi.")
+    async def unregister(self, ctx: nextcord.Interaction):
+        """
+        Hides you from bot.hellshade.fi.
+        :param ctx:
+        :return:
+        """
+        async with ctx.message.channel.typing():
+            async with session_lock:
+                with Session() as session:
+                    player = get_create(
+                        session, crud_player, obj_in=CreatePlayer(**{
+                            "discord_id": ctx.message.author.id,
+                            "name": ctx.message.author.name,
+                            "hidden": False
+                        })
+                    )
+
+                    if not player.hidden:
+                        crud_player.update(
+                            session, db_obj=player, obj_in={'hidden': True}
+                        )
+
+                    embed = nextcord.Embed()
+                    embed.set_author(name=self.__bot.user.name,
+                                     url=settings.URL,
+                                     icon_url=self.__bot.user.avatar.url)
+
+                    embed.title = "Success!"
+                    embed.description = f"yourself. You are now hidden from " \
+                                        f"[{settings.URL}]({settings.URL})"
+                    embed.colour = Colors.success
+
+                    await ctx.send(embed=embed)
+
+    @unregister.subcommand("steamid", "Remove SteamID")
+    async def unregister_steamid(self, ctx: nextcord.Interaction):
+        async with ctx.message.channel.typing():
+            async with session_lock:
+                with Session() as session:
+                    player = get_create(
+                        session, crud_player, obj_in=CreatePlayer(**{
+                            "discord_id": ctx.message.author.id,
+                            "name": ctx.message.author.name,
+                            "hidden": False
+                        })
+                    )
+
+                    crud_player.update(session, db_obj=player, obj_in={'steam_id': None})
+
+                    embed = nextcord.Embed()
+                    embed.set_author(
+                        name=self.__bot.user.name,
+                        url=settings.URL,
+                        icon_url=self.__bot.user.avatar.url,
+                    )
+                    embed.title = "Success!"
+                    embed.description = "Your SteamID has been removed!"
+                    embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
+                    embed.colour = Colors.success
+                    await ctx.send(embed=embed, ephemeral=True)
+
     @commands.group(pass_context=True, no_pm=True, hidden=True)
     @commands.has_permissions(administrator=True)
     async def slash_commands(self, ctx):
@@ -839,7 +933,7 @@ class Utility(commands.Cog):
                              url=settings.URL,
                              icon_url=self.__bot.user.avatar.url)
             embed.title = "Invalid role command! `!help slash_commands` for more info"
-            embed.timestamp = datetime.datetime.utcnow()
+            embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
             await ctx.send(embed=embed)
 
     @slash_commands.command(pass_context=True, no_pm=True, hidden=True)
@@ -877,7 +971,7 @@ class Utility(commands.Cog):
                 embed.description = f"Command `{db_command.name}` enabled for `{db_server.name}`!"
                 embed.colour = nextcord.Colour.green()
 
-        embed.timestamp = datetime.datetime.utcnow()
+        embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
         await ctx.send(embed=embed)
 
     @slash_commands.command(pass_context=True, no_pm=True, hidden=True)
@@ -915,5 +1009,5 @@ class Utility(commands.Cog):
                 embed.description = f"Command `{db_command.name}` disabled for `{db_server.name}`!"
                 embed.colour = nextcord.Colour.green()
 
-        embed.timestamp = datetime.datetime.utcnow()
+        embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
         await ctx.send(embed=embed)

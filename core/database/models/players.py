@@ -1,7 +1,7 @@
 import uuid
 from core.database.models import Base
 from core.database.types import GUID
-from sqlalchemy import Column, String, Boolean
+from sqlalchemy import Column, String, Boolean, Integer
 from sqlalchemy.orm import relationship
 
 
@@ -9,6 +9,7 @@ class Player(Base):
     __tablename__ = "players"
     uuid = Column(GUID(), primary_key=True, default=uuid.uuid4)
     discord_id = Column(String, nullable=False, unique=True)
+    steam_id = Column(String, nullable=True, unique=True)
     name = Column(String, nullable=False)
     hidden = Column(Boolean, nullable=False, default=True)
     memberships = relationship('Member')

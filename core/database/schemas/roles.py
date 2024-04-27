@@ -10,7 +10,7 @@ class RoleBase(BaseModel):
     server_uuid: UUID
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class CreateRole(RoleBase):
@@ -18,8 +18,8 @@ class CreateRole(RoleBase):
 
 
 class UpdateRole(BaseModel):
-    name: Optional[str]
-    description: Optional[str]
+    name: str | None
+    description: str | None
 
 
 class RoleEmojiBase(BaseModel):
@@ -32,4 +32,4 @@ class CreateRoleEmoji(RoleEmojiBase):
 
 
 class UpdateRoleEmoji(BaseModel):
-    identifier: Optional[str]
+    identifier: str | None

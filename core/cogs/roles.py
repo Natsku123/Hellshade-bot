@@ -1103,7 +1103,7 @@ class Roles(commands.Cog):
         )
         async with session_lock:
             with Session() as session:
-                # Get server data
+                # Get server interfaces
                 server = get_create_ctx(interaction, session, server_crud)
 
                 # Get roles for server
@@ -1137,7 +1137,7 @@ class Roles(commands.Cog):
         )
         async with session_lock:
             with Session() as session:
-                # Get server data
+                # Get server interfaces
                 server = get_create_ctx(ctx, session, server_crud)
 
                 # Get roles for server
@@ -1181,7 +1181,7 @@ class Roles(commands.Cog):
                 role_message = await interaction.send(embed=embed)
                 role_message = await role_message.fetch()
 
-                # Update server object to include role message data
+                # Update server object to include role message interfaces
                 server_update = UpdateServer(
                     **{
                         "role_message": str(role_message.id),
@@ -1301,7 +1301,7 @@ class Roles(commands.Cog):
                 for e in emojis:
                     await role_message.add_reaction(e)
 
-                # Update server object to include role message data
+                # Update server object to include role message interfaces
                 server_update = UpdateServer(
                     **{
                         "role_message": str(role_message.id),
