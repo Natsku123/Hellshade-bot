@@ -802,13 +802,13 @@ class Utility(commands.Cog):
         :param ctx:
         :return:
         """
-        async with ctx.message.channel.typing():
+        async with ctx.channel.typing():
             async with session_lock:
                 with Session() as session:
                     player = get_create(
                         session, crud_player, obj_in=CreatePlayer(**{
-                            "discord_id": ctx.message.author.id,
-                            "name": ctx.message.author.name,
+                            "discord_id": str(ctx.user.id),
+                            "name": ctx.user.name,
                             "hidden": False
                         })
                     )
@@ -842,7 +842,7 @@ class Utility(commands.Cog):
                 with Session() as session:
                     player = get_create(
                         session, crud_player, obj_in=CreatePlayer(**{
-                            "discord_id": ctx.user.id,
+                            "discord_id": str(ctx.user.id),
                             "name": ctx.user.name,
                             "hidden": False
                         })
@@ -874,7 +874,7 @@ class Utility(commands.Cog):
                 with Session() as session:
                     player = get_create(
                         session, crud_player, obj_in=CreatePlayer(**{
-                            "discord_id": ctx.user.id,
+                            "discord_id": str(ctx.user.id),
                             "name": ctx.user.name,
                             "hidden": False
                         })
@@ -904,7 +904,7 @@ class Utility(commands.Cog):
                 with Session() as session:
                     player = get_create(
                         session, crud_player, obj_in=CreatePlayer(**{
-                            "discord_id": ctx.user.id,
+                            "discord_id": str(ctx.user.id),
                             "name": ctx.user.name,
                             "hidden": False
                         })

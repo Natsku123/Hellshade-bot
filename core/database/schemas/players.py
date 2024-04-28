@@ -12,7 +12,7 @@ class PlayerBase(BaseModel):
         from_attributes = True
 
 
-class CreatePlayer(PlayerBase):
+class CreatePlayer(BaseModel):
     discord_id: str
     name: str
     hidden: bool
