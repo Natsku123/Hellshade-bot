@@ -177,6 +177,7 @@ class Games(commands.Cog):
     async def dota_guild_sync(self):
         await self.__bot.wait_until_ready()
         logger.info("Syncing Dota Guilds!...")
+        updated = 0
         async with session_lock:
             with Session() as session:
                 dota_guilds = crud_dg.get_multi(session)
@@ -219,12 +220,15 @@ class Games(commands.Cog):
                                         d_member.get_role(guild.role_discord_id) is None:
                                     logger.debug(f"Update guild role for {d_member.name}")
                                     await d_member.add_roles(guild.role_discord_id)
+                                    updated += 1
                                 elif guild.guild_id not in guild_ids and \
                                         d_member.get_role(guild.role_discord_id) is not None:
                                     logger.debug(f"Update guild role for {d_member.name}")
                                     await d_member.remove_roles(guild.role_discord_id)
+                                    updated += 1
                             elif d_member:
                                 logger.error(f"Could not find role with {guild.role_discord_id=}")
+        logger.info(f"Done syncing Dota Guilds. Users updated: {updated}")
 
     @commands.group(no_pm=True)
     async def steam(self, ctx):

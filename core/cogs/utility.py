@@ -88,7 +88,7 @@ class Utility(commands.Cog):
                     )
                     db_player = get_create(
                         session, crud_player, obj_in=CreatePlayer(**{
-                            "discord_id": message.author.id,
+                            "discord_id": str(message.author.id),
                             "name": message.author.name,
                             "hidden": True
                         })
@@ -159,7 +159,7 @@ class Utility(commands.Cog):
                     )
                     db_player = get_create(
                         session, crud_player, obj_in=CreatePlayer(**{
-                            "discord_id": user.id,
+                            "discord_id": str(user.id),
                             "name": user.name,
                             "hidden": True
                         })
@@ -271,7 +271,7 @@ class Utility(commands.Cog):
                 for member in filter(gets_exp, self.__bot.get_all_members()):
                     player_obj = get_create(
                         session, crud_player, obj_in=CreatePlayer(**{
-                            "discord_id": member.id,
+                            "discord_id": str(member.id),
                             "name": member.name,
                             "hidden": True
                         })
@@ -456,7 +456,7 @@ class Utility(commands.Cog):
                             name = player.name
                         db_player = crud_player.create(
                             session, obj_in=CreatePlayer(**{
-                                "discord_id": player_discord_id,
+                                "discord_id": str(player_discord_id),
                                 "name": name,
                                 "hidden": "hidden" in member["player"] and
                                           member["player"]["hidden"] == 1
