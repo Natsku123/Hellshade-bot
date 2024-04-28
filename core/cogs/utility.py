@@ -837,13 +837,13 @@ class Utility(commands.Cog):
         description="SteamID to register",
         required=True,
     )):
-        async with ctx.message.channel.typing():
+        async with ctx.channel.typing():
             async with session_lock:
                 with Session() as session:
                     player = get_create(
                         session, crud_player, obj_in=CreatePlayer(**{
-                            "discord_id": ctx.message.author.id,
-                            "name": ctx.message.author.name,
+                            "discord_id": ctx.user.id,
+                            "name": ctx.user.name,
                             "hidden": False
                         })
                     )
@@ -869,13 +869,13 @@ class Utility(commands.Cog):
         :param ctx:
         :return:
         """
-        async with ctx.message.channel.typing():
+        async with ctx.channel.typing():
             async with session_lock:
                 with Session() as session:
                     player = get_create(
                         session, crud_player, obj_in=CreatePlayer(**{
-                            "discord_id": ctx.message.author.id,
-                            "name": ctx.message.author.name,
+                            "discord_id": ctx.user.id,
+                            "name": ctx.user.name,
                             "hidden": False
                         })
                     )
@@ -899,13 +899,13 @@ class Utility(commands.Cog):
 
     @unregister.subcommand("steamid", "Remove SteamID")
     async def unregister_steamid(self, ctx: nextcord.Interaction):
-        async with ctx.message.channel.typing():
+        async with ctx.channel.typing():
             async with session_lock:
                 with Session() as session:
                     player = get_create(
                         session, crud_player, obj_in=CreatePlayer(**{
-                            "discord_id": ctx.message.author.id,
-                            "name": ctx.message.author.name,
+                            "discord_id": ctx.user.id,
+                            "name": ctx.user.name,
                             "hidden": False
                         })
                     )
@@ -1011,3 +1011,22 @@ class Utility(commands.Cog):
 
         embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
         await ctx.send(embed=embed)
+
+    @nextcord.slash_command("ip", "Show your public IP")
+    async def ip(self, ctx):
+        message = ""
+        async with ctx.message.channel.typing():
+            embed = nextcord.Embed()
+            embed.title = ""
+            embed.url = f"{settings.URL}/api/ip"
+            embed.timestamp = datetime.datetime.utcnow()
+            embed.colour = Colors.success
+            embed.set_author(name=self.__bot.user.name,
+                             url=settings.URL,
+                             icon_url=self.__bot.user.avatar.url)
+            embed.set_image(url=f"{settings.URL}/api/ip")
+
+        if message != "" and embed is None:
+            await ctx.send(message)
+        else:
+            await ctx.send(embed=embed)
