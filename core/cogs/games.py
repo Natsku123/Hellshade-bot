@@ -35,6 +35,7 @@ class Games(commands.Cog):
         self.update_heroes.start()
         self.patch_notes.start()
         self.get_steam_news.start()
+        self.dota_guild_sync.start()
 
     @tasks.loop(hours=24)
     async def update_heroes(self):
