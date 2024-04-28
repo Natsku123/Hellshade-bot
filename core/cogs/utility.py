@@ -38,7 +38,7 @@ class Utility(commands.Cog):
             with Session() as session:
                 get_create(
                     session, crud_server, obj_in=CreateServer(**{
-                        "discord_id": server.id,
+                        "discord_id": str(server.id),
                         "name": server.name,
                         "server_exp": 0,
                         "channel": None
@@ -58,7 +58,7 @@ class Utility(commands.Cog):
                 )
                 db_server = get_create(
                     session, crud_server, obj_in=CreateServer(**{
-                        "discord_id": member.guild.id,
+                        "discord_id": str(member.guild.id),
                         "name": member.guild.name,
                         "server_exp": 0,
                         "channel": None
@@ -80,7 +80,7 @@ class Utility(commands.Cog):
                 with Session() as session:
                     db_server = get_create(
                         session, crud_server, obj_in=CreateServer(**{
-                            "discord_id": message.guild.id,
+                            "discord_id": str(message.guild.id),
                             "name": message.guild.name,
                             "server_exp": 0,
                             "channel": None
@@ -151,7 +151,7 @@ class Utility(commands.Cog):
                 with Session() as session:
                     db_server = get_create(
                         session, crud_server, obj_in=CreateServer(**{
-                            "discord_id": user.guild.id,
+                            "discord_id": str(user.guild.id),
                             "name": user.guild.name,
                             "server_exp": 0,
                             "channel": None
@@ -227,7 +227,7 @@ class Utility(commands.Cog):
                 for server in self.__bot.guilds:
                     server_obj = get_create(
                         session, crud_server, obj_in=CreateServer(**{
-                            "discord_id": server.id,
+                            "discord_id": str(server.id),
                             "name": server.name,
                             "server_exp": 0,
                             "channel": None
@@ -279,7 +279,7 @@ class Utility(commands.Cog):
 
                     server_obj = get_create(
                         session, crud_server, obj_in=CreateServer(**{
-                            "discord_id": member.guild.id,
+                            "discord_id": str(member.guild.id),
                             "name": member.guild.name,
                             "server_exp": 0,
                             "channel": None
@@ -486,7 +486,7 @@ class Utility(commands.Cog):
 
                         db_server = crud_server.create(
                             session, obj_in=CreateServer(**{
-                                "discord_id": server_discord_id,
+                                "discord_id": str(server_discord_id),
                                 "name": name,
                                 "server_exp": 0,
                                 "channel": member["server"].get("channel")
@@ -567,7 +567,7 @@ class Utility(commands.Cog):
 
                     server = get_create(
                         session, crud_server, obj_in=CreateServer(**{
-                            "discord_id": ctx.guild.id,
+                            "discord_id": str(ctx.guild.id),
                             "name": ctx.guild.name,
                             "server_exp": 0,
                             "channel": channel_id
@@ -590,7 +590,7 @@ class Utility(commands.Cog):
                 else:
                     server = get_create(
                         session, crud_server, obj_in=CreateServer(**{
-                            "discord_id": ctx.guild.id,
+                            "discord_id": str(ctx.guild.id),
                             "name": ctx.guild.name,
                             "server_exp": 0,
                             "channel": None
@@ -670,7 +670,7 @@ class Utility(commands.Cog):
 
                     server = get_create(
                         session, crud_server, obj_in=CreateServer(**{
-                            "discord_id": ctx.guild.id,
+                            "discord_id": str(ctx.guild.id),
                             "name": ctx.guild.name,
                             "server_exp": 0,
                             "channel": None
@@ -720,7 +720,7 @@ class Utility(commands.Cog):
 
                         db_server = get_create(
                             session, crud_server, obj_in=CreateServer(**{
-                                "discord_id": ctx.guild.id,
+                                "discord_id": str(ctx.guild.id),
                                 "name": ctx.guild.name,
                                 "server_exp": 0,
                                 "channel": None
@@ -729,7 +729,7 @@ class Utility(commands.Cog):
 
                         db_player = get_create(
                             session, crud_player, obj_in=CreatePlayer(**{
-                                "discord_id": ctx.message.author.id,
+                                "discord_id": str(ctx.message.author.id),
                                 "name": ctx.message.author.name,
                                 "hidden": True
                             })

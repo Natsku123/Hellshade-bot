@@ -25,7 +25,7 @@ class Core(commands.Cog):
                 for guild in self.__bot.guilds:
                     server = get_create(
                         session, crud_server, obj_in=CreateServer(**{
-                            "discord_id": guild.id,
+                            "discord_id": str(guild.id),
                             "name": guild.name,
                             "server_exp": 0,
                             "channel": None

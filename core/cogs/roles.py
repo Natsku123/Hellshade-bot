@@ -46,7 +46,7 @@ async def autocomplete_context(
         player = players.player.create(
             session,
             obj_in=CreatePlayer(
-                discord_id=ctx.user.id, name=ctx.user.name, hidden=True
+                discord_id=str(ctx.user.id), name=ctx.user.name, hidden=True
             ),
         )
     if server is None:
