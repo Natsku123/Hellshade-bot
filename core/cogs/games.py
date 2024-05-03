@@ -194,7 +194,7 @@ class Games(commands.Cog):
                             crud_dg.update(session, db_obj=guild,
                                            obj_in=UpdateDotaGuild(**{"name": guild_summary.guild_info.guild_name}))
 
-                        server: nextcord.Guild | None = self.__bot.get_guild(int(guild.guild_id.discord_id))
+                        server: nextcord.Guild | None = self.__bot.get_guild(int(guild.server.discord_id))
 
                         if not server:
                             continue

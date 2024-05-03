@@ -1013,9 +1013,9 @@ class Utility(commands.Cog):
         await ctx.send(embed=embed)
 
     @nextcord.slash_command("ip", "Show your public IP")
-    async def ip(self, ctx):
+    async def ip(self, ctx: nextcord.Interaction):
         message = ""
-        async with ctx.message.channel.typing():
+        async with ctx.channel.typing():
             embed = nextcord.Embed()
             embed.title = ""
             embed.url = f"{settings.URL}/api/ip"
