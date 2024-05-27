@@ -154,7 +154,7 @@ class Games(commands.Cog):
         else:
             last_title = ""
 
-        if latest > last_title:
+        if latest != last_title:
             logger.info("New patch notes found!")
             with open('/files/last_title', 'w') as pfw:
                 pfw.write(latest)
@@ -183,7 +183,6 @@ class Games(commands.Cog):
                 dota_guilds = crud_dg.get_multi(session)
                 async with ClientSession() as client:
                     for guild in dota_guilds:
-
                         guild_summary = await get_guild_summary(client, guild)
 
                         if guild_summary is None:
