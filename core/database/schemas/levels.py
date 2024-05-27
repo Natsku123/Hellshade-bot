@@ -4,7 +4,7 @@ from typing import Optional
 
 class LevelBase(BaseModel):
     value: int
-    title: str | None
+    title: str | None = None
     exp: int
 
     class Config:
@@ -16,5 +16,5 @@ class CreateLevel(LevelBase):
 
 
 class UpdateLevel(BaseModel):
-    title: str | None
-    exp: int | None
+    title: str | None = None
+    exp: int | None = None
