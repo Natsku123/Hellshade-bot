@@ -1,12 +1,16 @@
 .env
 data/
+data.back/
 files/
 *.json
 !package.json
 venv/
 .idea/
+.yarn/
 __pycache__/
 dump.py
 docker-compose-dev.yml
 chromedriver
 test.py
+
+.DS_Store

@@ -33,7 +33,7 @@ class CRUDSubscription(CRUDBase[Subscription, schemas.CreateSubscription, schema
             channel_id = str(channel_id)
         query = select(self.model).where(self.model.channel_id == channel_id)
         result = db.execute(query)
-        return result.scalars().all()
+        return list(result.scalars().all())
 
 
 post = CRUDPost(Post)

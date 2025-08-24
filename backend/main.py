@@ -19,7 +19,7 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-app.add_route("/", GraphQLApp(schema=schema, on_get=make_graphiql_handler()))
+app.add_route("/", GraphQLApp(schema, on_get=make_graphiql_handler()))
 
 
 @app.get('/level-image')

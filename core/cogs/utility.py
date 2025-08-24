@@ -1,4 +1,4 @@
-from nextcord import SlashOption
+from nextcord import InteractionContextType, SlashOption
 from nextcord.ext import commands, tasks
 import nextcord
 import datetime
@@ -746,7 +746,7 @@ class Utility(commands.Cog):
         await ctx.send(embed=embed)
 
     @nextcord.slash_command(
-        "top", "Check top N (5) most active users on this server", dm_permission=False
+        "top", "Check top N (5) most active users on this server", contexts=[InteractionContextType.guild]
     )
     async def top(self, ctx, value: int = 5):
         """
@@ -804,7 +804,7 @@ class Utility(commands.Cog):
             await ctx.send(embed=embed)
 
     @nextcord.slash_command(
-        "rank", "See your rank on current server.", dm_permission=False
+        "rank", "See your rank on current server.", contexts=[InteractionContextType.guild]
     )
     async def rank(self, ctx: nextcord.Interaction):
         """

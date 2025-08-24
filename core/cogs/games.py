@@ -601,7 +601,7 @@ class Games(commands.Cog):
                             embed.description = (
                                 f"{guild_summary.guild_info.guild_description}\n"
                                 f"MOTD: **{guild_summary.guild_info.guild_motd}**\n"
-                                f"Created: **{guild_summary.guild_info.created_timestamp.isoformat()}**"
+                                f"Created: <t:{guild_summary.guild_info.created_timestamp.timestamp():.0f}:f>"
                             )
 
                         else:

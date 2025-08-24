@@ -1,0 +1,28 @@
+[project]
+name = "hellshade-bot"
+version = "0.1.0"
+description = "A Discord bot for Hellshade and friends"
+readme = "README.md"
+authors = [
+    { name = "Max Mecklin", email = "max@meckl.in" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "alembic",
+    "asyncpg",
+    "beautifulsoup4",
+    "bs4",
+    "chardet",
+    "nextcord[speed]",
+    "psycopg2-binary",
+    "pydantic",
+    "pydantic-settings",
+    "requests",
+    "sqlalchemy",
+]
+
+[tool.uv.workspace]
+members = [
+    "hellshade-bot-backend",
+    "hellshade-bot-core",
+]

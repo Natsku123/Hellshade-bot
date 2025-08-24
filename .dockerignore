@@ -3,4 +3,9 @@
 docker-compose*.yml
 Dockerfile
 data/
+data.back/
+frontend/
+backend/
 chromedriver
+.venv/
+venv/

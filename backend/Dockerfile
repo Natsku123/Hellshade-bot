@@ -1,19 +1,24 @@
-FROM tiangolo/uvicorn-gunicorn:python3.8-alpine3.10
+FROM python:3.13-slim-trixie
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 LABEL maintainer="Max Mecklin <max@meckl.in>"
 
-RUN apk update && \
-    apk add --virtual build-deps gcc python-dev musl-dev && \
-    apk add --no-cache cairo openssl-dev libffi-dev g++ jpeg-dev zlib-dev && \
-    apk add postgresql-dev && \
-    apk add netcat-openbsd && \
-    apk add postgresql-client
-
-
-COPY . /app
+RUN apt-get update && apt-get install -y libcairo2 python3-dev libffi-dev
 
 WORKDIR /app
 
-ENV PYTHONPATH "${PYTHONPATH}:/app"
+# Install dependencies
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --locked --no-install-project
 
-RUN pip install -r requirements.txt
+ADD . /app
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --compile-bytecode
+
+ENV PYTHONPATH="${PYTHONPATH}:/bot"
+
+
+CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80", "--workers", "4"]

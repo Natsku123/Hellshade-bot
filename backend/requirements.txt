@@ -1,9 +1,9 @@
-fastapi==0.89.0
-graphene_sqlalchemy==3.0.0b3
-graphene>=3
-sqlalchemy==1.4.46
+fastapi
+graphene_sqlalchemy
+graphene
+sqlalchemy
 psycopg2-binary
 jinja2
-cairosvg==2.5.2
-starlette-graphene3==0.6.0
+cairosvg
+starlette-graphene3
 promise
