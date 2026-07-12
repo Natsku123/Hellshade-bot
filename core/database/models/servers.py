@@ -1,18 +1,21 @@
 import uuid
 from core.database.models import Base
 from core.database.types import GUID
-from sqlalchemy import Column, String, Integer, DateTime
-from sqlalchemy.orm import relationship
+from sqlalchemy import String, Integer, DateTime
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from core.database.models.members import Member
 
 
 class Server(Base):
     __tablename__ = "servers"
-    uuid = Column(GUID(), primary_key=True, default=uuid.uuid4)
-    discord_id = Column(String, nullable=False, unique=True)
-    name = Column(String, nullable=False)
-    server_exp = Column(Integer, nullable=True)
-    channel = Column(String, nullable=True)
-    role_channel = Column(String, nullable=True)
-    role_message = Column(String, nullable=True)
-    last_seen = Column(DateTime, nullable=True)
-    members = relationship('Member')
+
+    uuid: Mapped[str] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
+    discord_id: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    server_exp: Mapped[int] = mapped_column(Integer, nullable=True)
+    channel: Mapped[str] = mapped_column(String, nullable=True)
+    role_channel: Mapped[str] = mapped_column(String, nullable=True)
+    role_message: Mapped[str] = mapped_column(String, nullable=True)
+    last_seen: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
+
+    members: Mapped[list[Member]] = relationship('Member', back_populates='server')

@@ -1,20 +1,23 @@
 import logging
 import os
-from typing import List
 
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    BOT_TOKEN: str = os.environ.get("TOKEN")
-    BOT_OWNER: int = os.environ.get("OWNER")
+    BOT_TOKEN: str = os.getenv("TOKEN", "")
+    BOT_OWNER: int = int(os.getenv("OWNER", "0"))
     DATABASE_SERVER: str = os.environ.get("DB_HOST", "db")
-    DATABASE_USER: str = os.environ.get("DB_USER")
-    DATABASE_PASSWORD: str = os.environ.get("DB_PASS")
-    DATABASE_NAME: str = os.environ.get("DB_NAME")
-    ADMINS: list[int] = os.environ.get('ADMINS').split(",")
-    URL: str = os.environ.get('SITE_URL', 'https://bot.hellshade.fi')
-    STEAM_API_KEY: str = os.environ.get('STEAM_API_KEY', "")
+    DATABASE_USER: str = os.getenv("DB_USER", "")
+    DATABASE_PASSWORD: str = os.getenv("DB_PASS", "")
+    DATABASE_NAME: str = os.getenv("DB_NAME", "")
+    ADMINS: list[int] = [
+        int(admin)
+        for admin in os.getenv("ADMINS", "").split(",")
+        if admin
+    ]
+    URL: str = os.getenv('SITE_URL', 'https://bot.hellshade.fi')
+    STEAM_API_KEY: str = os.getenv('STEAM_API_KEY', "")
 
     class Config:
         case_sensitive = True

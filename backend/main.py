@@ -1,6 +1,6 @@
 import io
 import cairosvg
-from fastapi import FastAPI, Query, Response, Request
+from fastapi import FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse
 from starlette_graphene3 import GraphQLApp, make_graphiql_handler

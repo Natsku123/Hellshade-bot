@@ -1,23 +1,25 @@
 import uuid
 from core.database.models import Base
 from core.database.types import GUID
-from sqlalchemy import Column, String, ForeignKey
-from sqlalchemy.orm import relationship
-
-from core.database.models.members import member_role_association
+from sqlalchemy import String, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from core.database.models.members import Member, member_role_association
+from core.database.models.servers import Server
 
 
 class Role(Base):
     __tablename__ = "roles"
-    uuid = Column(GUID(), primary_key=True, default=uuid.uuid4)
-    discord_id = Column(String, nullable=False, unique=True)
-    name = Column(String, nullable=False)
-    description = Column(String, nullable=True)
-    server_uuid = Column(GUID(), ForeignKey('servers.uuid'))
-    server = relationship(
+
+    uuid: Mapped[str] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
+    discord_id: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[str] = mapped_column(String, nullable=True)
+    server_uuid: Mapped[str] = mapped_column(GUID(), ForeignKey('servers.uuid'))
+
+    server: Mapped[Server] = relationship(
         'Server', uselist=False
     )
-    members = relationship(
+    members: Mapped[list[Member]] = relationship(
         'Member', secondary=member_role_association,
         back_populates="roles"
     )
@@ -25,9 +27,11 @@ class Role(Base):
 
 class RoleEmoji(Base):
     __tablename__ = "roleemojis"
-    uuid = Column(GUID(), primary_key=True, default=uuid.uuid4)
-    identifier = Column(String, nullable=False)
-    role_uuid = Column(GUID(), ForeignKey('roles.uuid'), unique=True)
-    role = relationship(
+
+    uuid: Mapped[str] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
+    identifier: Mapped[str] = mapped_column(String, nullable=False)
+    role_uuid: Mapped[str] = mapped_column(GUID(), ForeignKey('roles.uuid'), unique=True)
+
+    role: Mapped[Role] = relationship(
         'Role', uselist=False
     )

@@ -1,8 +1,8 @@
 from uuid import UUID
 from nextcord import Interaction
 from nextcord.ext.commands import Context
-from core.database import Session
-from typing import Optional, Union, Tuple
+from sqlalchemy.orm import Session
+from typing import Union, Tuple
 
 from core.database.crud.servers import CRUDServer
 from core.database.crud.servers import server as crud_server
@@ -75,7 +75,7 @@ def get_create(
                 db, obj_in=obj_in
             )
     else:
-        raise NotImplemented
+        raise NotImplementedError
 
     return obj
 
@@ -120,29 +120,36 @@ def get_create_ctx(
             obj = crud_level.create(db, obj_in=CreateLevel(**level_dict))
 
     elif isinstance(crud, CRUDServer):
+        if ctx.guild is None:
+            raise ValueError("Context have a guild to get/create server!")
+
         obj = crud.get_by_discord(
             db, ctx.guild.id
         )
 
         if obj is None:
-            server_dict = {
-                "discord_id": ctx.guild.id,
-                "name": ctx.guild.name,
-                "server_exp": overrides.get('exp', 0),
-                "channel": overrides.get('channel_id')
-            }
-            obj = crud_server.create(
-                db, obj_in=CreateServer(**server_dict)
-            )
-
-        server_uuid = obj.uuid
+                obj = crud_server.create(
+                    db,
+                    obj_in=CreateServer(
+                        discord_id=str(ctx.guild.id),
+                        name=ctx.guild.name,
+                        server_exp=overrides.get('exp', 0),
+                        channel=str(overrides.get('channel_id'))
+                        if overrides.get('channel_id') is not None
+                        else None,
+                    ),
+                )
 
     elif isinstance(crud, CRUDPlayer):
+
         if hasattr(ctx, 'message') and ctx.message:
             obj = crud.get_by_discord(
                 db, ctx.message.author.id
             )
         elif isinstance(ctx, Interaction):
+            if ctx.user is None:
+                raise ValueError("Context have a user to get/create player!")
+            
             obj = crud.get_by_discord(
                 db, ctx.user.id
             )
@@ -154,19 +161,22 @@ def get_create_ctx(
         if obj is None:
             if hasattr(ctx, 'message') and ctx.message:
                 player_dict = {
-                    "discord_id": ctx.message.author.id,
+                    "discord_id": str(ctx.message.author.id),
                     "name": ctx.message.author.name,
                     "hidden": overrides.get('hidden', False)
                 }
             elif isinstance(ctx, Interaction):
+                if ctx.user is None:
+                    raise ValueError("Context have a user to get/create player!")
+
                 player_dict = {
-                    "discord_id": ctx.user.id,
+                    "discord_id": str(ctx.user.id),
                     "name": ctx.user.name,
                     "hidden": overrides.get('hidden', False)
                 }
             else:
                 player_dict = {
-                    "discord_id": ctx.author.id,
+                    "discord_id": str(ctx.author.id),
                     "name": ctx.author.name,
                     "hidden": overrides.get('hidden', False)
                 }
@@ -200,9 +210,9 @@ def add_to_role(
         db: Session,
         member_uuid: UUID,
         *,
-        role_uuid: UUID = None,
-        role_discord_id: str = None,
-        role_name: str = None
+        role_uuid: UUID | None = None,
+        role_discord_id: str | None = None,
+        role_name: str | None = None
 ) -> Tuple[bool, str]:
     db_member = crud_member.get(db, uuid=member_uuid)
 
@@ -229,9 +239,9 @@ def remove_from_role(
         db: Session,
         member_uuid: UUID,
         *,
-        role_uuid: UUID = None,
-        role_discord_id: str = None,
-        role_name: str = None
+    role_uuid: UUID | None = None,
+    role_discord_id: str | None = None,
+    role_name: str | None = None
 ) -> Tuple[bool, str]:
     db_member = crud_member.get(db, uuid=member_uuid)
 
@@ -261,4 +271,6 @@ def get_guild_ids(command: str):
     with Session() as session:
         db_commands = crud_command.get_enabled_by_name(session, command)
         for c in db_commands:
-            yield int(crud_server.get(session, c.uuid).discord_id)
+            server = crud_server.get(session, c.uuid)
+            if server is not None:
+                yield int(server.discord_id)

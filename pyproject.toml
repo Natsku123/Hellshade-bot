@@ -13,6 +13,8 @@ dependencies = [
     "beautifulsoup4",
     "bs4",
     "chardet",
+    "graphene>=3.4.3",
+    "graphene-sqlalchemy==3.0.0rc2",
     "nextcord[speed]",
     "psycopg2-binary",
     "pydantic",
@@ -25,4 +27,10 @@ dependencies = [
 members = [
     "hellshade-bot-backend",
     "hellshade-bot-core",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.21",
+    "ty>=0.0.58",
 ]

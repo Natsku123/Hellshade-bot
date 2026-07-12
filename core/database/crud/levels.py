@@ -4,7 +4,7 @@ from core.database.crud import CRUDBase, ModelType
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from sqlalchemy.future import select
-from typing import Optional, List
+from typing import Optional, List, cast
 from core.utils import level_exp
 
 
@@ -20,7 +20,7 @@ class CRUDLevel(CRUDBase[Level, schemas.CreateLevel, schemas.UpdateLevel]):
         """
         query = select(self.model).where(self.model.value == value)
         result = db.execute(query)
-        return result.scalars().first()
+        return cast(Optional[ModelType], result.scalars().first())
 
     def get_highest(
             self, db: Session
@@ -32,7 +32,7 @@ class CRUDLevel(CRUDBase[Level, schemas.CreateLevel, schemas.UpdateLevel]):
         """
         query = select(self.model).order_by(desc(self.model.value))
         result = db.execute(query)
-        return result.scalars().first()
+        return cast(Optional[ModelType], result.scalars().first())
 
     def generate_many(
             self, db: Session, to: int
@@ -49,7 +49,7 @@ class CRUDLevel(CRUDBase[Level, schemas.CreateLevel, schemas.UpdateLevel]):
             start_value = 0
         else:
             start_value = highest.value
-        levels = []
+        levels: list[Level] = []
 
         for i in range(start_value + 1, to + 1):
             levels.append(Level(**{
@@ -64,7 +64,7 @@ class CRUDLevel(CRUDBase[Level, schemas.CreateLevel, schemas.UpdateLevel]):
         for lvl in levels:
             db.refresh(lvl)
 
-        return levels
+        return cast(List[ModelType], levels)
 
 
 level = CRUDLevel(Level)

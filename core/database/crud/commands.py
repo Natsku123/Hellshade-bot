@@ -4,7 +4,7 @@ from core.database.crud import CRUDBase, ModelType
 
 from sqlalchemy.orm import Session
 from sqlalchemy.future import select
-from typing import Optional
+from typing import Optional, cast
 from uuid import UUID
 
 
@@ -20,7 +20,7 @@ class CRUDCommand(CRUDBase[Command, schemas.CreateCommand, schemas.UpdateCommand
 
         query = select(self.model).where(self.model.name == name).where(self.model.server_uuid == server_uuid)
         result = db.execute(query)
-        return result.scalars().first()
+        return cast(Optional[ModelType], result.scalars().first())
 
     def get_enabled_by_name(self, db: Session, name: str) -> list[ModelType]:
         """
@@ -30,9 +30,9 @@ class CRUDCommand(CRUDBase[Command, schemas.CreateCommand, schemas.UpdateCommand
         :return: Object or None
         """
 
-        query = select(self.model).where(self.model.name == name).where(self.model.status is True)
+        query = select(self.model).where(self.model.name == name).where(self.model.status.is_(True))
         result = db.execute(query)
-        return result.scalars().all()
+        return list(cast(list[ModelType], result.scalars().all()))
 
 
 command: CRUDCommand = CRUDCommand(Command)

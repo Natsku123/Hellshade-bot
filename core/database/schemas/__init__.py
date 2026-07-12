@@ -1,5 +1,4 @@
 from uuid import UUID
-from typing import List
 from core.database.schemas.members import MemberBase
 from core.database.schemas.players import PlayerBase
 from core.database.schemas.levels import LevelBase

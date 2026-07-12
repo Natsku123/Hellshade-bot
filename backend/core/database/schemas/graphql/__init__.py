@@ -1,4 +1,4 @@
-from graphene import relay, ObjectType, Schema, Field, String, Int, Boolean, \
+from graphene import relay, ObjectType, Schema, String, Int, Boolean, \
     List, DateTime
 from graphene_sqlalchemy import SQLAlchemyConnectionField
 from core.database.schemas.graphql.levels import Level

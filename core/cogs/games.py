@@ -632,7 +632,7 @@ class Games(commands.Cog):
 
             else:
                 try:
-                    if type(timeout) == str:
+                    if isinstance(timeout, str):
                         if (
                             "h" not in timeout
                             and "min" not in timeout

@@ -4,10 +4,11 @@ from core.database.schemas import members as schemas
 from core.database.crud import CRUDBase, ModelType
 
 from uuid import UUID
+from typing import Union
 from sqlalchemy.orm import Session
 from sqlalchemy.future import select
 from sqlalchemy import desc
-from typing import List, Optional
+from typing import List, Optional, cast
 
 
 class CRUDMember(CRUDBase[Member, schemas.CreateMember, schemas.UpdateMember]):
@@ -27,10 +28,10 @@ class CRUDMember(CRUDBase[Member, schemas.CreateMember, schemas.UpdateMember]):
             order_by(desc(Level.value), desc(self.model.exp)).\
             limit(value)
         result = db.execute(query)
-        return result.scalars().all()
+        return list(cast(List[ModelType], result.scalars().all()))
 
     def get_by_ids(
-            self, db: Session, player_uuid: UUID, server_uuid
+            self, db: Session, player_uuid: Union[UUID, str], server_uuid: Union[UUID, str]
     ) -> Optional[ModelType]:
         """
         Get member by player_uuid and server_uuid
@@ -43,12 +44,12 @@ class CRUDMember(CRUDBase[Member, schemas.CreateMember, schemas.UpdateMember]):
             where(self.model.player_uuid == player_uuid).\
             where(self.model.server_uuid == server_uuid)
         result = db.execute(query)
-        return result.scalars().first()
+        return cast(Optional[ModelType], result.scalars().first())
 
     def get_multi_by_server_uuid(self, db: Session, server_uuid: UUID) -> list[ModelType]:
         query = select(self.model).where(self.model.server_uuid == server_uuid)
         result = db.execute(query)
-        return result.scalars().all()
+        return list(cast(list[ModelType], result.scalars().all()))
 
 
 member = CRUDMember(Member)
