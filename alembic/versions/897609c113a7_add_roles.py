@@ -8,6 +8,7 @@ Create Date: 2021-03-09 09:08:13.112482
 from alembic import op
 import sqlalchemy as sa
 import core
+import core.database.types
 
 
 # revision identifiers, used by Alembic.

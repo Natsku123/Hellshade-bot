@@ -19,7 +19,7 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-app.add_route("/", GraphQLApp(schema, on_get=make_graphiql_handler()))
+app.mount("/", GraphQLApp(schema, on_get=make_graphiql_handler()))
 
 
 @app.get('/level-image')
@@ -36,11 +36,11 @@ async def level_image(
 
 @app.get('/ip')
 async def ip(request: Request):
+    client_host = request.client.host if request.client is not None else None
     client_ip = request.headers.get(
-        "x-real-ip", request.headers.get(
-            "x-forwarded-for", request.client.host
-        )
+        "x-real-ip",
+        request.headers.get("x-forwarded-for", client_host or "unknown"),
     )
-    svg = render_ip(client_ip)
+    svg = render_ip(client_ip or "unknown")
     bts = cairosvg.svg2png(svg.encode('UTF-8'))
     return StreamingResponse(io.BytesIO(bts), media_type="image/png")

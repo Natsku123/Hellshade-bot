@@ -24,19 +24,21 @@ class Core(commands.Cog):
             with Session() as session:
                 for guild in self.__bot.guilds:
                     server = get_create(
-                        session, crud_server, obj_in=CreateServer(**{
-                            "discord_id": str(guild.id),
-                            "name": guild.name,
-                            "server_exp": 0,
-                            "channel": None
-                        })
+                        session,
+                        crud_server,
+                        obj_in=CreateServer(
+                            discord_id=str(guild.id),
+                            name=guild.name,
+                            server_exp=0,
+                            channel=None,
+                        ),
                     )
 
                     # Update last seen
                     now = datetime.now()
 
                     crud_server.update(
-                        session, db_obj=server, obj_in=UpdateServer(**{
-                            "last_seen": now
-                        })
+                        session,
+                        db_obj=server,
+                        obj_in=UpdateServer(last_seen=now),
                     )

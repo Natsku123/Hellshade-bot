@@ -18,6 +18,6 @@ class CreatePlayer(BaseModel):
 
 
 class UpdatePlayer(BaseModel):
-    name: str | None
-    hidden: bool | None
-    steam_id: str | None
+    name: str | None = None
+    hidden: bool | None = None
+    steam_id: str | None = None

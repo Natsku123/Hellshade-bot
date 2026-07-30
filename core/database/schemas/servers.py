@@ -1,11 +1,12 @@
-from pydantic import BaseModel
 from datetime import datetime
+
+from pydantic import BaseModel
 
 
 class ServerBase(BaseModel):
     discord_id: str
     name: str
-    server_exp: int
+    server_exp: int | None = None
     channel: str | None = None
     role_channel: str | None = None
     role_message: str | None = None
@@ -20,9 +21,9 @@ class CreateServer(ServerBase):
 
 
 class UpdateServer(BaseModel):
-    name: str | None
-    server_exp: int | None
-    channel: str | None
-    role_channel: str | None
-    role_message: str | None
-    last_seen: datetime | None
+    name: str | None = None
+    server_exp: int | None = None
+    channel: str | None = None
+    role_channel: str | None = None
+    role_message: str | None = None
+    last_seen: datetime | None = None

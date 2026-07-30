@@ -17,5 +17,5 @@ class CreateMember(MemberBase):
 
 
 class UpdateMember(BaseModel):
-    exp: int | None
-    level_uuid: UUID | None
+    exp: int | None = None
+    level_uuid: UUID | None = None

@@ -1,4 +1,6 @@
+from typing import overload
 from uuid import UUID
+
 from nextcord import Interaction
 from nextcord.ext.commands import Context
 from sqlalchemy.orm import Session
@@ -18,15 +20,53 @@ from core.database.schemas.servers import CreateServer
 from core.database.schemas.players import CreatePlayer
 from core.database.schemas.members import CreateMember
 from core.database.schemas.levels import CreateLevel
+from core.database.models import Server, Player, Member, Level
 
 from core.utils import level_exp
 
 
+@overload
 def get_create(
-        db: Session, crud, *, obj_in=Union[
-            CreateServer, CreatePlayer, CreateMember, CreateLevel
-        ]
-):
+    db: Session,
+    crud: CRUDServer,
+    *,
+    obj_in: CreateServer,
+) -> Server: ...
+
+
+@overload
+def get_create(
+    db: Session,
+    crud: CRUDPlayer,
+    *,
+    obj_in: CreatePlayer,
+) -> Player: ...
+
+
+@overload
+def get_create(
+    db: Session,
+    crud: CRUDMember,
+    *,
+    obj_in: CreateMember,
+) -> Member: ...
+
+
+@overload
+def get_create(
+    db: Session,
+    crud: CRUDLevel,
+    *,
+    obj_in: CreateLevel,
+) -> Level: ...
+
+
+def get_create(
+    db: Session,
+    crud: CRUDServer | CRUDPlayer | CRUDMember | CRUDLevel,
+    *,
+    obj_in: Union[CreateServer, CreatePlayer, CreateMember, CreateLevel],
+) -> Union[Server, Player, Member, Level]:
     """
     Create object if it doesn't exist
     :param db: Database session
@@ -78,6 +118,80 @@ def get_create(
         raise NotImplementedError
 
     return obj
+
+
+def ensure_server_player_member(
+        db: Session,
+        *,
+        guild_id: int,
+        guild_name: str,
+        player_id: int,
+        player_name: str,
+        hidden: bool = True,
+) -> Tuple[Server, Player, Member]:
+    """Get or create server, player and member in a single call."""
+
+    db_server = get_create(
+        db,
+        crud_server,
+        obj_in=CreateServer(
+            discord_id=str(guild_id),
+            name=guild_name,
+            server_exp=0,
+            channel=None,
+        ),
+    )
+
+    db_player = get_create(
+        db,
+        crud_player,
+        obj_in=CreatePlayer(
+            discord_id=str(player_id),
+            name=player_name,
+            hidden=hidden,
+        ),
+    )
+
+    db_member = get_create(
+        db,
+        crud_member,
+        obj_in=CreateMember(
+            exp=0,
+            player_uuid=db_player.uuid,
+            server_uuid=db_server.uuid,
+            level_uuid=None,
+        ),
+    )
+
+    return db_server, db_player, db_member
+
+
+def ensure_server_player_member_ctx(
+        ctx: Union[Context, Interaction],
+        db: Session,
+        *,
+        hidden: bool = True,
+) -> Tuple[Server, Player, Member]:
+    """Get or create server, player and member from a Discord context."""
+
+    guild = getattr(ctx, "guild", None)
+    if guild is None:
+        raise ValueError("Context must have a guild to get/create server.")
+
+    user = getattr(ctx, "user", None)
+    if user is None:
+        user = getattr(ctx, "author", None)
+    if user is None:
+        raise ValueError("Context must have a user to get/create player.")
+
+    return ensure_server_player_member(
+        db,
+        guild_id=guild.id,
+        guild_name=guild.name,
+        player_id=user.id,
+        player_name=user.name,
+        hidden=hidden,
+    )
 
 
 def get_create_ctx(

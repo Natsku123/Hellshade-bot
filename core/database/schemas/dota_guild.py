@@ -18,7 +18,7 @@ class CreateDotaGuild(DotaGuildBase):
 
 
 class UpdateDotaGuild(BaseModel):
-    role_discord_id: str | None
-    name: str | None
-    server_uuid: UUID | None
-    guild_id: int | None
+    role_discord_id: str | None = None
+    name: str | None = None
+    server_uuid: UUID | None = None
+    guild_id: int | None = None

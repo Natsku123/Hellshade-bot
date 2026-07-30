@@ -1,18 +1,18 @@
+from typing import cast
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.database.crud import CRUDBase
 from core.database.models.dota_guild import DotaGuild
 from core.database.schemas import dota_guild as schemas
-from core.database.crud import CRUDBase, ModelType
-from typing import cast
 
 
 class CRUDDotaGuild(CRUDBase[DotaGuild, schemas.CreateDotaGuild, schemas.UpdateDotaGuild]):
     def get_multi_by_server_uuid(
             self, db: Session, server_uuid: UUID
-    ) -> list[ModelType]:
+    ) -> list[DotaGuild]:
         """
         Get Dota Guilds by server_uuid
         :param db:
@@ -22,12 +22,12 @@ class CRUDDotaGuild(CRUDBase[DotaGuild, schemas.CreateDotaGuild, schemas.UpdateD
 
         query = select(self.model).where(self.model.server_uuid == server_uuid)
         result = db.execute(query)
-        return list(cast(list[ModelType], result.scalars().all()))
+        return list(cast(list[DotaGuild], result.scalars().all()))
 
-    def get_by_guild_id_server_uuid(self, db: Session, guild_id: int, server_uuid: UUID) -> ModelType | None:
+    def get_by_guild_id_server_uuid(self, db: Session, guild_id: int, server_uuid: UUID) -> DotaGuild | None:
         query = select(self.model).where(self.model.guild_id == guild_id).where(self.model.server_uuid == server_uuid)
         result = db.execute(query)
-        return cast(ModelType | None, result.scalars().first())
+        return result.scalars().first()
 
 
 dota_guild = CRUDDotaGuild(DotaGuild)

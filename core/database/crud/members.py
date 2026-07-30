@@ -12,6 +12,9 @@ from typing import List, Optional, cast
 
 
 class CRUDMember(CRUDBase[Member, schemas.CreateMember, schemas.UpdateMember]):
+    def get_multi_members(self, db: Session, server_uuid: UUID) -> list[Member]:
+        return self.get_multi_by_server_uuid(db, server_uuid)
+
     def get_top(
             self, db: Session, server_uuid: UUID, value: int
     ) -> List[ModelType]:

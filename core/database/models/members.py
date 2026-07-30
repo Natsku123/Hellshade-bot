@@ -1,12 +1,15 @@
 import uuid
-from core.database.models import Base
-from core.database.types import GUID
-from sqlalchemy import Integer, ForeignKey, Table, Column
+from uuid import UUID
+
+from sqlalchemy import Column, ForeignKey, Integer, Table
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from core.database.models.players import Player
-from core.database.models.servers import Server
+
+from core.database.models import Base
 from core.database.models.levels import Level
+from core.database.models.players import Player
 from core.database.models.roles import Role
+from core.database.models.servers import Server
+from core.database.types import GUID
 
 
 member_role_association = Table(
@@ -19,11 +22,11 @@ member_role_association = Table(
 class Member(Base):
     __tablename__ = "members"
 
-    uuid: Mapped[str] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
+    uuid: Mapped[UUID] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
     exp: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    player_uuid: Mapped[str] = mapped_column(GUID(), ForeignKey('players.uuid'))
-    server_uuid: Mapped[str] = mapped_column(GUID(), ForeignKey('servers.uuid'))
-    level_uuid: Mapped[str] = mapped_column(GUID(), ForeignKey('levels.uuid'), nullable=True)
+    player_uuid: Mapped[UUID] = mapped_column(GUID(), ForeignKey('players.uuid'))
+    server_uuid: Mapped[UUID] = mapped_column(GUID(), ForeignKey('servers.uuid'))
+    level_uuid: Mapped[UUID | None] = mapped_column(GUID(), ForeignKey('levels.uuid'), nullable=True)
 
     player: Mapped[Player] = relationship(
         'Player', uselist=False, back_populates='memberships'
