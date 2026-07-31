@@ -1,11 +1,11 @@
 import re
+from uuid import UUID
 
 import nextcord.partial_emoji
 from typing import Optional, Sequence, Union, cast
 from sqlalchemy.orm import Session
 from nextcord.ext import commands, tasks, application_checks
 from nextcord import Embed, Forbidden, HTTPException, utils, SlashOption
-from uuid import UUID
 
 # from discord_ui import nextcord, SlashOption, AutocompleteInteraction, SlashPermission
 from core.config import settings, logger
@@ -768,7 +768,10 @@ class Roles(commands.Cog):
                     embed.title = "Role not found"
                     embed.colour = Colors.error
                 else:
-                    role_update = UpdateRole(**{"description": description})
+                    role_update = UpdateRole(
+                        name=db_role.name,
+                        description=description,
+                    )
 
                     db_role = role_crud.update(
                         session, db_obj=db_role, obj_in=role_update
@@ -827,13 +830,14 @@ class Roles(commands.Cog):
                     embed.title = "Role not found"
                     embed.colour = Colors.error
                 else:
-                    db_emoji = emoji_crud.get_by_role(session, UUID(db_role.uuid))
+                    db_role_uuid = UUID(str(db_role.uuid))
+                    db_emoji = emoji_crud.get_by_role(session, db_role_uuid)
                     role_name = db_role.name
 
                     if db_emoji is not None:
                         emoji_crud.remove(session, uuid=db_emoji.uuid)
 
-                    role_crud.remove(session, uuid=UUID(db_role.uuid))
+                    role_crud.remove(session, uuid=db_role_uuid)
                     embed.title = f"Role *{role_name}* removed."
                     embed.colour = Colors.success
 
@@ -968,7 +972,7 @@ class Roles(commands.Cog):
 
                 # Get all roles on the server
                 roles = role_crud.get_multi_by_server_uuid(
-                    session, UUID(get_create_ctx(interaction, session, server_crud).uuid)
+                    session, get_create_ctx(interaction, session, server_crud).uuid
                 )
 
                 # Gather all used emojis for future reactions
@@ -976,7 +980,7 @@ class Roles(commands.Cog):
 
                 for r in roles:
 
-                    emoji = emoji_crud.get_by_role(session, UUID(r.uuid))
+                    emoji = emoji_crud.get_by_role(session, r.uuid)
 
                     if emoji is not None:
                         e = emoji.identifier

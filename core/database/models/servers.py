@@ -1,12 +1,17 @@
+from __future__ import annotations
+
 import uuid
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database.models import Base
-from core.database.models.members import Member
 from core.database.types import GUID
+
+if TYPE_CHECKING:
+    from core.database.models.members import Member
 
 
 class Server(Base):
@@ -21,4 +26,4 @@ class Server(Base):
     role_message: Mapped[str] = mapped_column(String, nullable=True)
     last_seen: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
 
-    members: Mapped[list[Member]] = relationship('Member', back_populates='server')
+    members: Mapped[list["Member"]] = relationship("Member", back_populates="server")

@@ -14,3 +14,9 @@ chromedriver
 test.py
 
 .DS_Store
+.env.test
+.coverage
+coverage.xml
+.pytest_cache/
+.ruff_cache/
+.uv-cache/

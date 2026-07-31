@@ -1,9 +1,16 @@
+from __future__ import annotations
+
 import uuid
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Boolean, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from core.database.models import Base
 from core.database.types import GUID
-from sqlalchemy import String, Boolean
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from core.database.models.members import Member
+
+if TYPE_CHECKING:
+    from core.database.models.members import Member
 
 
 class Player(Base):
@@ -15,7 +22,7 @@ class Player(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     hidden: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
-    memberships: Mapped[list[Member]] = relationship('Member', back_populates='player')
+    memberships: Mapped[list["Member"]] = relationship("Member", back_populates="player")
 
     def __repr__(self):
         return f"Player({self.uuid=}, {self.discord_id=}, {self.name=}, " \

@@ -1,5 +1,5 @@
 import os
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def _get_origins() -> list[str]:
@@ -22,8 +22,7 @@ class Settings(BaseSettings):
     )
     ORIGINS: list[str] = _get_origins()
 
-    class Config:
-        case_sensitive = True
+    model_config = SettingsConfigDict(case_sensitive=True)
 
 
 settings = Settings()

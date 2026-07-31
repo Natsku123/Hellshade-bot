@@ -1,5 +1,5 @@
 from uuid import UUID
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class CommandBase(BaseModel):
@@ -7,8 +7,7 @@ class CommandBase(BaseModel):
     server_uuid: UUID
     status: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CreateCommand(BaseModel):

@@ -428,7 +428,21 @@ class Games(commands.Cog):
 
     @slash_dota.subcommand("random", "Get a truly random Dota 2 hero!")
     async def slash_dota_random(self, ctx):
-        index = random.randint(0, len(self.__heroes))
+        if not self.__heroes:
+            embed = nextcord.Embed()
+            embed.title = "You randomed..."
+            embed.description = "No Dota heroes are currently available."
+            embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
+            embed.colour = 8161513
+            embed.set_author(
+                name=self.__bot.user.name,
+                url=settings.URL,
+                icon_url=self.__bot.user.avatar.url,
+            )
+            await ctx.send(embed=embed)
+            return
+
+        index = random.randint(0, len(self.__heroes) - 1)
         hero = self.__heroes[index]
         hero_name = hero["name"]
         hero_image = hero["link"]
@@ -700,6 +714,7 @@ class Games(commands.Cog):
                             raise ValueError
                     except ValueError:
                         await ctx.send("Invalid timeout value.")
+                        return
             if delay > 0:
                 await ctx.send("Invitation added to queue.")
 
