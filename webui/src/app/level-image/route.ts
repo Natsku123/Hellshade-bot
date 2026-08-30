@@ -34,6 +34,7 @@ export async function GET(request: Request) {
       return null;
     }
   })();
+  const progress = neededExp > 0 ? Math.min(Math.max(currentExp / neededExp, 0), 1) : 0;
   const percentage = `${(progress * 100).toFixed(2)}%`;
   const markerCenter = 15 + progress * 550;
 
