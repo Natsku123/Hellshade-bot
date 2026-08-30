@@ -9,17 +9,10 @@ import type { MemberView, ServerDetail } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
 export async function GET(
-  request: Request,
-  context: { params: Promise<{ id: string }> },
+  _request: Request,
+  context: { params: { id: string } },
 ) {
-  // Enforce read-only
-  if (request.method !== "GET") {
-    return NextResponse.json(
-      toApiError(new Error("Method not allowed"), "Only GET requests are allowed"),
-      { status: 405, headers: getReadOnlyHeaders() },
-    );
-  }
-  const { id } = await context.params;
+  const { id } = context.params;
 
   try {
     // Validate ID is a UUID

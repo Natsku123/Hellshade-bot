@@ -21,11 +21,11 @@ export class AppError extends Error {
 }
 
 export function logError(error: unknown, context?: string): void {
-  const prefix = context ? `[${context}]` : "";
+  const prefix = context ? `[${context}] ` : "";
   if (error instanceof Error) {
-    console.error(`${prefix} ${error.name}: ${error.message}`);
+    console.error(`${prefix}${error.name}: ${error.message}`);
   } else {
-    console.error(`${prefix} Unknown error:`, error);
+    console.error(`${prefix}Unknown error:`, error);
   }
 }
 
