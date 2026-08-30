@@ -1,7 +1,7 @@
 ---
 name: docker-compose-ops
-description: 'Operate repository Docker Compose stacks (dev and next) with consistent commands for up/down/build/logs/restart and service-scoped actions.'
-argument-hint: '[stack: dev|next] [action: up|down|restart|ps|logs|build|pull|config] [optional service]'
+description: 'Operate repository Docker Compose stacks (dev and webui) with consistent commands for up/down/build/logs/restart and service-scoped actions.'
+argument-hint: '[stack: dev|webui] [action: up|down|restart|ps|logs|build|pull|config] [optional service]'
 ---
 
 # Docker Compose Ops
@@ -18,8 +18,8 @@ argument-hint: '[stack: dev|next] [action: up|down|restart|ps|logs|build|pull|co
 - For diagnostics, use `docker-runtime-debug`.
 
 ## Stacks
-- `dev` -> `docker-compose-dev.yml`
-- `next` -> `docker-compose-next.yml`
+- `dev` -> `docker-compose-dev.yml` (references the now-deleted legacy `backend/`; kept for reference only, currently non-functional)
+- `webui` -> `docker-compose.yml`
 
 ## When to Use
 - Bring a stack up/down.
@@ -33,8 +33,8 @@ argument-hint: '[stack: dev|next] [action: up|down|restart|ps|logs|build|pull|co
 
 ## Command
 ```bash
-bash .github/skills/docker-compose-ops/scripts/compose_ops.sh next up
-bash .github/skills/docker-compose-ops/scripts/compose_ops.sh next logs next
+bash .github/skills/docker-compose-ops/scripts/compose_ops.sh webui up
+bash .github/skills/docker-compose-ops/scripts/compose_ops.sh webui logs webui
 bash .github/skills/docker-compose-ops/scripts/compose_ops.sh dev restart bot
 ```
 

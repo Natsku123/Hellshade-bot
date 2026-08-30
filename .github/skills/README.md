@@ -6,7 +6,7 @@ Use this index to choose the correct workflow skill quickly.
 
 - `docker-compose-ops`
   - File: `./docker-compose-ops/SKILL.md`
-  - Use for: start/stop/build/logs/ps/restart/config for `dev` and `next` compose stacks.
+  - Use for: start/stop/build/logs/ps/restart/config for `dev` and `webui` compose stacks.
 
 - `docker-runtime-debug`
   - File: `./docker-runtime-debug/SKILL.md`
@@ -16,7 +16,7 @@ Use this index to choose the correct workflow skill quickly.
 
 - `yarn-frontend-manager`
   - File: `./yarn-frontend-manager/SKILL.md`
-  - Use for: install/dev/lint/build/outdated and safe or interactive dependency upgrades across `frontend` and `frontend-next`.
+  - Use for: install/dev/lint/build/outdated and safe or interactive dependency upgrades for the `webui` app.
 
 ## Dependency Upgrades
 

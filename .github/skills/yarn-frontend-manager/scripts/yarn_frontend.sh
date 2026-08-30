@@ -1,19 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-app="${1:-}"
-action="${2:-}"
+action="${1:-}"
 
 usage() {
   cat <<'EOF'
-Usage: yarn_frontend.sh <app> <action>
+Usage: yarn_frontend.sh <action>
 
-Apps:
-  frontend  Legacy Vue frontend
-  next      Next.js frontend-next
-  all       Run action on both apps
-
-Actions:
+Actions (run in webui/):
   install
   dev
   build
@@ -30,95 +24,49 @@ if ! command -v yarn >/dev/null 2>&1; then
   exit 1
 fi
 
-if [ -z "$app" ] || [ -z "$action" ]; then
+if [ -z "$action" ]; then
   usage
   exit 2
 fi
 
-run_action() {
-  local dir="$1"
+if [ ! -d "webui" ]; then
+  echo "Directory not found: webui" >&2
+  exit 1
+fi
 
-  if [ ! -d "$dir" ]; then
-    echo "Directory not found: $dir" >&2
-    exit 1
-  fi
+pushd "webui" >/dev/null
 
-  pushd "$dir" >/dev/null
-
-  case "$action" in
-    install)
-      if [ "$dir" = "frontend-next" ]; then
-        yarn install --ignore-engines
-      else
-        yarn install
-      fi
-      ;;
-    dev)
-      if [ "$dir" = "frontend-next" ]; then
-        yarn dev
-      else
-        yarn serve
-      fi
-      ;;
-    build)
-      yarn build
-      ;;
-    lint)
-      if [ "$dir" = "frontend" ]; then
-        yarn lint
-      else
-        yarn lint
-      fi
-      ;;
-    outdated)
-      yarn outdated || true
-      ;;
-    upgrade-safe)
-      if [ "$dir" = "frontend-next" ]; then
-        yarn upgrade
-      else
-        yarn up -R
-      fi
-      ;;
-    upgrade-interactive)
-      if [ "$dir" = "frontend-next" ]; then
-        yarn upgrade-interactive --latest
-      else
-        yarn up -i
-      fi
-      ;;
-    dedupe)
-      if [ "$dir" = "frontend-next" ]; then
-        yarn install
-      else
-        yarn dedupe
-      fi
-      ;;
-    *)
-      popd >/dev/null
-      echo "Invalid action: $action" >&2
-      usage
-      exit 2
-      ;;
-  esac
-
-  popd >/dev/null
-}
-
-case "$app" in
-  frontend)
-    run_action "frontend"
+case "$action" in
+  install)
+    yarn install --ignore-engines
     ;;
-  next)
-    run_action "frontend-next"
+  dev)
+    yarn dev
     ;;
-  all)
-    run_action "frontend"
-    run_action "frontend-next"
+  build)
+    yarn build
+    ;;
+  lint)
+    yarn lint
+    ;;
+  outdated)
+    yarn outdated || true
+    ;;
+  upgrade-safe)
+    yarn upgrade
+    ;;
+  upgrade-interactive)
+    yarn upgrade-interactive --latest
+    ;;
+  dedupe)
+    yarn install
     ;;
   *)
-    echo "Invalid app: $app" >&2
+    popd >/dev/null
+    echo "Invalid action: $action" >&2
     usage
     exit 2
     ;;
 esac
+
+popd >/dev/null

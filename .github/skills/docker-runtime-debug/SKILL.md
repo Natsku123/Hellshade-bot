@@ -1,7 +1,7 @@
 ---
 name: docker-runtime-debug
 description: 'Run deterministic Docker runtime diagnostics for compose stacks, including health checks, db readiness checks, service logs, and Traefik routing triage.'
-argument-hint: '[stack: dev|next] [check: overview|health|db|traefik|logs] [optional service for logs]'
+argument-hint: '[stack: dev|webui] [check: overview|health|db|traefik|logs] [optional service for logs]'
 ---
 
 # Docker Runtime Debug
@@ -18,8 +18,8 @@ argument-hint: '[stack: dev|next] [check: overview|health|db|traefik|logs] [opti
 - For lifecycle operations, use `docker-compose-ops`.
 
 ## Stacks
-- `dev` -> `docker-compose-dev.yml`
-- `next` -> `docker-compose-next.yml`
+- `dev` -> `docker-compose-dev.yml` (references the now-deleted legacy `backend/`; kept for reference only, currently non-functional)
+- `webui` -> `docker-compose.yml`
 
 ## Checks
 - `overview`: show ps + recent logs snapshot.
@@ -30,12 +30,12 @@ argument-hint: '[stack: dev|next] [check: overview|health|db|traefik|logs] [opti
 
 ## Command
 ```bash
-bash .github/skills/docker-runtime-debug/scripts/runtime_debug.sh next overview
-bash .github/skills/docker-runtime-debug/scripts/runtime_debug.sh next db
+bash .github/skills/docker-runtime-debug/scripts/runtime_debug.sh webui overview
+bash .github/skills/docker-runtime-debug/scripts/runtime_debug.sh webui db
 bash .github/skills/docker-runtime-debug/scripts/runtime_debug.sh dev traefik
 ```
 
 ## Execution Notes For Agents
 - Run from repository root.
 - Start with `overview`, then narrow to `db` or `traefik` as needed.
-- If Traefik docker provider is unstable locally, fallback to file-provider routing pattern in `docker-compose-next.yml` + `traefik/dynamic.yml`.
+- If Traefik docker provider is unstable locally, fallback to file-provider routing pattern in `docker-compose.yml` + `traefik/dynamic.yml`.

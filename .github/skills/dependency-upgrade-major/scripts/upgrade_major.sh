@@ -77,24 +77,20 @@ python_plan() {
   fetch_python_meta "alembic"
   fetch_python_meta "sqlalchemy"
   fetch_python_meta "nextcord"
-  fetch_python_meta "fastapi"
-  fetch_python_meta "uvicorn"
 }
 
 frontend_plan() {
   echo "[major][plan] Node package metadata"
   fetch_node_meta "next"
   fetch_node_meta "react"
-  fetch_node_meta "vue"
-  fetch_node_meta "vuetify"
+  fetch_node_meta "pg"
 }
 
 containers_plan() {
   echo "[major][plan] Container image surface"
   echo "Inspect Dockerfiles for base tags before major updates:"
   echo "  - Dockerfile"
-  echo "  - backend/Dockerfile"
-  echo "  - frontend/Dockerfile"
+  echo "  - webui/Dockerfile"
   echo
 }
 
@@ -105,24 +101,23 @@ python_apply() {
 }
 
 frontend_apply() {
-  echo "[major][apply] Running interactive frontend upgrades"
-  bash .github/skills/yarn-frontend-manager/scripts/yarn_frontend.sh all upgrade-interactive
+  echo "[major][apply] Running interactive webui upgrades"
+  bash .github/skills/yarn-frontend-manager/scripts/yarn_frontend.sh upgrade-interactive
 }
 
 containers_apply() {
   echo "[major][apply] Pull/build container images after base-tag updates"
   bash .github/skills/docker-compose-ops/scripts/compose_ops.sh dev pull || true
-  bash .github/skills/docker-compose-ops/scripts/compose_ops.sh next pull || true
+  bash .github/skills/docker-compose-ops/scripts/compose_ops.sh webui pull || true
   bash .github/skills/docker-compose-ops/scripts/compose_ops.sh dev build
-  bash .github/skills/docker-compose-ops/scripts/compose_ops.sh next build
+  bash .github/skills/docker-compose-ops/scripts/compose_ops.sh webui build
 }
 
 run_verify() {
   echo "[major] Running checkpoint verification"
   make test-fast
-  bash .github/skills/yarn-frontend-manager/scripts/yarn_frontend.sh frontend lint
-  bash .github/skills/yarn-frontend-manager/scripts/yarn_frontend.sh next lint
-  bash .github/skills/docker-runtime-debug/scripts/runtime_debug.sh next health
+  bash .github/skills/yarn-frontend-manager/scripts/yarn_frontend.sh lint
+  bash .github/skills/docker-runtime-debug/scripts/runtime_debug.sh webui health
 }
 
 run_scope_phase() {

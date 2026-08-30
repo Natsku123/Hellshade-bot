@@ -25,7 +25,7 @@ fi
 
 case "$stack" in
   dev) compose_file="docker-compose-dev.yml" ;;
-  next) compose_file="docker-compose-next.yml" ;;
+  webui) compose_file="docker-compose.yml" ;;
   *)
     echo "Invalid stack: $stack" >&2
     usage

@@ -21,7 +21,7 @@ argument-hint: '[scope: python|frontend|containers|all] [--verify]'
 
 ## Scopes
 - `python`: refresh uv lock state from existing constraints.
-- `frontend`: refresh Yarn lockfiles within existing package.json ranges.
+- `frontend`: refresh the `webui` Yarn lockfile within existing package.json ranges.
 - `containers`: pull/build compose images for updated base layers.
 - `all`: run all scopes in order.
 

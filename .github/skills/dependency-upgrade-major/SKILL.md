@@ -24,8 +24,8 @@ argument-hint: '[scope: python|frontend|containers|all] [phase: plan|apply] [--v
 - `apply`: run staged major upgrade commands and checkpoint validations.
 
 ## Scopes
-- `python`: direct project dependencies in root and backend pyproject surfaces.
-- `frontend`: package upgrades in both frontend applications.
+- `python`: direct project dependencies in the root pyproject surface.
+- `frontend`: package upgrades in the `webui` app.
 - `containers`: base image and compose image surface checks.
 - `all`: run scopes sequentially with checkpoints.
 

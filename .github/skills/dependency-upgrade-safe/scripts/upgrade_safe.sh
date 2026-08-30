@@ -32,27 +32,25 @@ run_python() {
 }
 
 run_frontend() {
-  echo "[safe] Refreshing frontend lockfiles within declared semver ranges"
-  bash .github/skills/yarn-frontend-manager/scripts/yarn_frontend.sh all upgrade-safe
+  echo "[safe] Refreshing webui lockfile within declared semver ranges"
+  bash .github/skills/yarn-frontend-manager/scripts/yarn_frontend.sh upgrade-safe
 }
 
 run_containers() {
   echo "[safe] Pulling and building compose stacks"
   bash .github/skills/docker-compose-ops/scripts/compose_ops.sh dev pull || true
-  bash .github/skills/docker-compose-ops/scripts/compose_ops.sh next pull || true
+  bash .github/skills/docker-compose-ops/scripts/compose_ops.sh webui pull || true
   bash .github/skills/docker-compose-ops/scripts/compose_ops.sh dev build
-  bash .github/skills/docker-compose-ops/scripts/compose_ops.sh next build
+  bash .github/skills/docker-compose-ops/scripts/compose_ops.sh webui build
 }
 
 run_verify() {
   echo "[safe] Running verification checks"
   make test-fast
-  bash .github/skills/yarn-frontend-manager/scripts/yarn_frontend.sh frontend lint
-  bash .github/skills/yarn-frontend-manager/scripts/yarn_frontend.sh frontend build
-  bash .github/skills/yarn-frontend-manager/scripts/yarn_frontend.sh next lint
-  bash .github/skills/yarn-frontend-manager/scripts/yarn_frontend.sh next build
+  bash .github/skills/yarn-frontend-manager/scripts/yarn_frontend.sh lint
+  bash .github/skills/yarn-frontend-manager/scripts/yarn_frontend.sh build
   bash .github/skills/docker-compose-ops/scripts/compose_ops.sh dev config >/dev/null
-  bash .github/skills/docker-compose-ops/scripts/compose_ops.sh next config >/dev/null
+  bash .github/skills/docker-compose-ops/scripts/compose_ops.sh webui config >/dev/null
 }
 
 case "$scope" in
