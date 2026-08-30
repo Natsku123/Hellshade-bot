@@ -1,8 +1,9 @@
 import datetime
 import signal
-import sys
+from typing import Any, cast
 
 import nextcord
+from nextcord import ApplicationError
 from nextcord.ext import commands
 # from discord_ui import UI
 
@@ -40,10 +41,11 @@ def main():
 
     @bot.event
     async def on_ready():
+        assert bot.user is not None
         logger.info(f"\nLogged in as:\n{bot.user} (ID: {bot.user.id})")
 
     async def on_application_command_error(interaction: nextcord.Interaction,
-                                           exception: Exception):
+                                           exception: ApplicationError) -> None:
         """
         Handle error in Application commands
         :param interaction: Interaction
@@ -52,10 +54,11 @@ def main():
         """
         # sys.stderr.write(str(exception.with_traceback(sys.exc_info()[2])))
         embed = nextcord.Embed()
+        assert bot.user is not None
         embed.set_author(
             name=bot.user.name,
             url=settings.URL,
-            icon_url=bot.user.avatar.url,
+            icon_url=bot.user.avatar.url if bot.user.avatar else None,
         )
         embed.title = "Error running the command!"
         embed.description = f"{exception}"
@@ -64,7 +67,7 @@ def main():
         await interaction.send(embed=embed, ephemeral=True)
 
     # Replace with a new command error handler
-    bot.on_application_command_error = on_application_command_error
+    bot.on_application_command_error = cast(Any, on_application_command_error)
 
     def handle_sigterm(sig, frame):
         raise KeyboardInterrupt

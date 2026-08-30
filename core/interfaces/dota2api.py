@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, AnyHttpUrl
+from pydantic import BaseModel
 from aiohttp import ClientSession
 
 from core.config import settings, logger
@@ -77,7 +77,7 @@ async def get_guild_summary(client: ClientSession, guild: DotaGuild) -> Dota2Gui
             logger.warning(f"Could not find Dota Guild {guild.guild_id}! {data=}")
             return None
 
-        return Dota2GuildSummary.parse_obj(data["summary"])
+        return Dota2GuildSummary.model_validate(data["summary"])
 
 
 async def get_guild_persona_infos(client: ClientSession, member: Member) -> list[Dota2GuildPersonaInfo]:
@@ -107,7 +107,7 @@ async def get_guild_persona_infos(client: ClientSession, member: Member) -> list
             logger.warning(f"Could not find Dota Guild Persona {member.player.name}! {data=}")
             return []
 
-        return [Dota2GuildPersonaInfo.parse_obj(x) for x in data["account_guilds_persona_infos"]["guild_persona_infos"]]
+        return [Dota2GuildPersonaInfo.model_validate(x) for x in data["account_guilds_persona_infos"]["guild_persona_infos"]]
 
 
 async def get_heroes(client: ClientSession) -> list[Dota2Hero]:
@@ -125,9 +125,9 @@ async def get_heroes(client: ClientSession) -> list[Dota2Hero]:
             logger.warning(f"Could not fetch heroes :/ {data=}")
             return []
 
-        return [Dota2Hero.parse_obj(x) for x in data["result"]["data"]["heroes"]]
+        return [Dota2Hero.model_validate(x) for x in data["result"]["data"]["heroes"]]
 
 
-def get_guild_icon(icon_id: str) -> AnyHttpUrl:
+def get_guild_icon(icon_id: str) -> str:
     # TODO
     return f"https://steamusercontent-a.akamaihd.net/ugc/{icon_id}/BB15623560DDC2B8785B7CCA0701185359F98765/"

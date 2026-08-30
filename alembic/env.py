@@ -6,6 +6,16 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from core.database.models import Base
+import core.database.models.commands  # noqa: F401
+import core.database.models.dota_guild  # noqa: F401
+import core.database.models.gw2_tp_order  # noqa: F401
+import core.database.models.levels  # noqa: F401
+import core.database.models.members  # noqa: F401
+import core.database.models.players  # noqa: F401
+import core.database.models.roles  # noqa: F401
+import core.database.models.servers  # noqa: F401
+import core.database.models.steamnews  # noqa: F401
+import core.database.models.users  # noqa: F401
 from core.config import settings
 
 from alembic import context
@@ -16,7 +26,8 @@ config = context.config
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-fileConfig(config.config_file_name)
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
 
 # add your model's MetaData object here
 # for 'autogenerate' support
@@ -64,6 +75,8 @@ def run_migrations_online():
 
     """
     configuration = config.get_section(config.config_ini_section)
+    if configuration is None:
+        configuration = {}
     configuration["sqlalchemy.url"] = url
     connectable = engine_from_config(
         configuration,

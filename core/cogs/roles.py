@@ -1,24 +1,30 @@
 import re
+from uuid import UUID
 
 import nextcord.partial_emoji
-from typing import Optional, Union
+from typing import Optional, Sequence, Union, cast
+from sqlalchemy.orm import Session
 from nextcord.ext import commands, tasks, application_checks
 from nextcord import Embed, Forbidden, HTTPException, utils, SlashOption
 
 # from discord_ui import nextcord, SlashOption, AutocompleteInteraction, SlashPermission
 from core.config import settings, logger
-from core.database import Session, session_lock
+from core.database import Session as SessionLocal, session_lock
 from core.database.crud.roles import role as role_crud, role_emoji as emoji_crud
 from core.database.crud import members
 from core.database.crud.servers import server as server_crud
 from core.database.crud import players
 from core.database.schemas.roles import UpdateRole, CreateRole, CreateRoleEmoji
 from core.database.schemas.servers import UpdateServer
-from core.database.schemas.members import CreateMember
 from core.database.schemas.players import CreatePlayer
 from core.database.models import Member, Server, Player, Role
-from core.database.utils import get_create_ctx, add_to_role, remove_from_role
-from datetime import datetime
+from core.database.utils import (
+    get_create_ctx,
+    add_to_role,
+    remove_from_role,
+    ensure_server_player_member_ctx,
+)
+from datetime import datetime, timezone
 
 from core.utils import Colors
 
@@ -29,37 +35,25 @@ async def desync(it):
 
 
 def like_role(
-        l: list[Union[nextcord.Role, Role]], s: str
+    roles: Sequence[Union[nextcord.Role, Role]], s: str
 ) -> list[Union[nextcord.Role, Role]]:
     if not s or s == "":
-        return l
+        return list(roles)
 
-    return [x for x in l if s.lower() in x.name.lower()]
+    return [x for x in roles if s.lower() in x.name.lower()]
 
 
 async def autocomplete_context(
-        session: Session, ctx: nextcord.Interaction
+    session: Session, ctx: nextcord.Interaction
 ) -> tuple[Optional[Server], Player, Optional[Member]]:
-    server = server_crud.get_by_discord(session, ctx.guild.id)
-    player = players.player.get_by_discord(session, ctx.user.id)
-    if player is None:
+    if ctx.guild is None or ctx.user is None:
         player = players.player.create(
             session,
-            obj_in=CreatePlayer(
-                discord_id=str(ctx.user.id), name=ctx.user.name, hidden=True
-            ),
+            obj_in=CreatePlayer(discord_id="0", name="UNKNOWN", hidden=True),
         )
-    if server is None:
         return None, player, None
-    member = members.member.get_by_ids(session, player.uuid, server.uuid)
-    if member is None:
-        member = members.member.create(
-            session,
-            obj_in=CreateMember(
-                exp=0, player_uuid=player.uuid, server_uuid=server.uuid
-            ),
-        )
 
+    server, player, member = ensure_server_player_member_ctx(ctx, session, hidden=True)
     return server, player, member
 
 
@@ -75,93 +69,21 @@ async def assignable_roles(
     :return: list of name-role pairs
     """
     logger.debug(f"{cog.qualified_name}")
-    with Session() as session:
-        server, player, author = await autocomplete_context(session, ctx)
+    with SessionLocal() as session:
+        server, _, author = await autocomplete_context(session, ctx)
 
-        if server is None:
+        if server is None or author is None:
             return []
 
         roles = role_crud.get_multi_by_query(session, server.uuid, value)
-        return [
-            (role.name, role.discord_id)
-            async for role in desync(roles)
-            if role not in author.roles
-        ]
 
-
-async def removable_roles(
-        cog: commands.Cog, ctx: nextcord.Interaction, value: str
-) -> list[tuple[str, Union[str, int]]]:
-    """
-    Get removable roles for server and member.
-
-    :param cog: Cog
-    :param ctx: Context
-    :param value: Autocomplete current value
-    :return: list of name-role pairs
-    """
-
-    logger.debug(f"{cog.qualified_name}")
-    with Session() as session:
-        server, player, author = await autocomplete_context(session, ctx)
-
-        if server is None:
-            return []
-
-        return [
-            (role.name, role.discord_id)
-            async for role in desync(like_role(author.roles, value))
-        ]
-
-
-async def creatable_roles(
-        cog: commands.Cog, ctx: nextcord.Interaction, value: str
-) -> list[nextcord.Role]:
-    """
-    Get creatable roles for server.
-
-    :param cog: Cog
-    :param ctx: Context
-    :param value: Autocomplete current value
-    :return: list of name-role pairs
-    """
-    logger.debug(f"{cog.qualified_name}")
-    with Session() as session:
-        server, _, _ = await autocomplete_context(session, ctx)
-
-        if server is None:
-            return []
-
-        roles = [
-            role
-            async for role in desync(like_role(ctx.guild.roles, value))
-            if not role_crud.get_by_discord(session, role.id)
-        ]
-
-        return roles
+        return [(role.name, role.discord_id) for role in roles]
 
 
 async def deletable_roles(
         cog: commands.Cog, ctx: nextcord.Interaction, value: str
 ) -> list[tuple[str, Union[str, int]]]:
-    """
-    Get deletable roles for server.
-
-    :param cog: Cog
-    :param ctx: Context
-    :param value: Autocomplete current value
-    :return: list of name-role pairs
-    """
-    logger.debug(f"{cog.qualified_name}")
-    with Session() as session:
-        server, _, _ = await autocomplete_context(session, ctx)
-
-        if server is None:
-            return []
-
-        roles = role_crud.get_multi_by_query(session, server.uuid, value)
-
-        return [(role.name, role.discord_id) async for role in desync(roles)]
+    return await assignable_roles(cog, ctx, value)
 
 
 async def available_emojis(
@@ -177,19 +99,22 @@ async def available_emojis(
     """
     logger.debug(f"{cog.qualified_name}")
     logger.debug(value)
-    with Session() as session:
+    with SessionLocal() as session:
         server, _, _ = await autocomplete_context(session, ctx)
+
+        if ctx.guild is None:
+            return []
 
         if server is None:
             # TODO make sure this returns ALL emojis usable on said Guild
             return [str(emoji) async for emoji in desync(ctx.guild.emojis)]
 
         roles = role_crud.get_multi_by_server_uuid(session, server.uuid)
-        db_emojis = [
-            emoji_crud.get_by_role(session, role.uuid).identifier
-            for role in roles
-            if emoji_crud.get_by_role(session, role.uuid)
-        ]
+        db_emojis = []
+        for role in roles:
+            emoji = emoji_crud.get_by_role(session, role.uuid)
+            if emoji is not None:
+                db_emojis.append(emoji.identifier)
 
         return [
             str(emoji)
@@ -207,6 +132,27 @@ class Roles(commands.Cog):
         # Start tasks
         self.role_update.start()
 
+    def _base_embed(self) -> Embed:
+        embed = Embed()
+        bot_user = cast(nextcord.ClientUser, self.__bot.user)
+        embed.set_author(
+            name=bot_user.name,
+            url=settings.URL,
+            icon_url=bot_user.avatar.url if bot_user.avatar else None,
+        )
+        return embed
+
+    def _append_deprecation_notice(self, embed: Embed) -> Embed:
+        note = (
+            "⚠️ This slash command is deprecated. "
+            "Please use onboarding instead."
+        )
+        if embed.description:
+            embed.description = f"{embed.description}\n\n{note}"
+        else:
+            embed.description = note
+        return embed
+
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
 
@@ -215,7 +161,7 @@ class Roles(commands.Cog):
             return
 
         async with session_lock:
-            with Session() as session:
+            with SessionLocal() as session:
 
                 server = server_crud.get_by_discord(session, payload.guild_id)
                 if server and str(payload.message_id) == server.role_message:
@@ -259,9 +205,12 @@ class Roles(commands.Cog):
                         return
 
                     try:
-                        role = self.__bot.get_guild(payload.guild_id).get_role(
-                            int(d_id)
-                        )
+                        guild = self.__bot.get_guild(payload.guild_id)
+                        if guild is None:
+                            return
+                        role = guild.get_role(int(d_id))
+                        if role is None:
+                            return
                         await payload.member.add_roles(
                             role, reason="Added through role reaction."
                         )
@@ -277,7 +226,7 @@ class Roles(commands.Cog):
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload):
         async with session_lock:
-            with Session() as session:
+            with SessionLocal() as session:
 
                 server = server_crud.get_by_discord(session, payload.guild_id)
                 if server and str(payload.message_id) == server.role_message:
@@ -320,8 +269,13 @@ class Roles(commands.Cog):
 
                     try:
                         guild = self.__bot.get_guild(payload.guild_id)
+                        if guild is None:
+                            return
                         role = guild.get_role(int(d_id))
-                        await guild.get_member(payload.user_id).remove_roles(
+                        member = guild.get_member(payload.user_id)
+                        if role is None or member is None:
+                            return
+                        await member.remove_roles(
                             role, reason="Removed through role reaction."
                         )
                     except Forbidden:
@@ -343,7 +297,7 @@ class Roles(commands.Cog):
         logger.info("Updating role messages...")
 
         async with session_lock:
-            with Session() as session:
+            with SessionLocal() as session:
 
                 # Go through all visible guilds
                 for guild in self.__bot.guilds:
@@ -394,10 +348,17 @@ class Roles(commands.Cog):
                             logger.info(f"No channel found for {server.name}.")
                             continue
 
+                        if not hasattr(channel, "history"):
+                            logger.info(f"Channel for {server.name} has no history.")
+                            continue
+
                         # Channel must not be bloated with messages
+                        history = [
+                            m async for m in cast(nextcord.TextChannel, channel).history(limit=10)
+                        ]
                         message = utils.find(
                             lambda m: (m.id == int(server.role_message)),
-                            await channel.history(limit=10).flatten(),
+                            history,
                         )
 
                         # Continue if message wasn't found
@@ -407,6 +368,10 @@ class Roles(commands.Cog):
 
                         # Get context
                         ctx = await self.__bot.get_context(message)
+
+                        if message.guild is None:
+                            logger.info(f"Message guild missing for {server.name}.")
+                            continue
 
                         embed = Embed()
                         embed.title = (
@@ -470,7 +435,7 @@ class Roles(commands.Cog):
 
                         logger.info(f"Message updated for {server.name}.")
 
-    @nextcord.slash_command("role", "Role management")
+    @nextcord.slash_command("role", "Deprecated role management. Use onboarding instead.")
     async def slash_role(self, ctx: nextcord.Interaction):
         """
         Role management, more on !help role
@@ -478,14 +443,13 @@ class Roles(commands.Cog):
         :param ctx: Context
         :return:
         """
-        embed = Embed()
-        embed.set_author(
-            name=self.__bot.user.name,
-            url=settings.URL,
-            icon_url=self.__bot.user.avatar.url,
+        embed = self._base_embed()
+        embed.title = "Role commands are deprecated"
+        embed.description = (
+            "These role commands are no longer recommended. "
+            "Please use onboarding instead."
         )
-        embed.title = "Invalid role command! `!help role` for more info"
-        embed.timestamp = datetime.utcnow()
+        embed.timestamp = datetime.now(timezone.utc)
         await ctx.send(embed=embed, ephemeral=True)
 
     @commands.group(no_pm=True)
@@ -497,14 +461,13 @@ class Roles(commands.Cog):
         :return:
         """
         if ctx.invoked_subcommand is None:
-            embed = Embed()
-            embed.set_author(
-                name=self.__bot.user.name,
-                url=settings.URL,
-                icon_url=self.__bot.user.avatar.url,
+            embed = self._base_embed()
+            embed.title = "Role commands are deprecated"
+            embed.description = (
+                "Text role commands are deprecated. "
+                "Please use onboarding instead."
             )
-            embed.title = "Invalid role command! `!help role` for more info"
-            embed.timestamp = datetime.utcnow()
+            embed.timestamp = datetime.now(timezone.utc)
             await ctx.send(embed=embed)
 
     @slash_role.subcommand(name="add")
@@ -521,14 +484,9 @@ class Roles(commands.Cog):
         :param interaction: Interaction
         :return:
         """
-        embed = Embed()
-        embed.set_author(
-            name=self.__bot.user.name,
-            url=settings.URL,
-            icon_url=self.__bot.user.avatar.url,
-        )
+        embed = self._base_embed()
         async with session_lock:
-            with Session() as session:
+            with SessionLocal() as session:
                 db_member = get_create_ctx(interaction, session, members.member)
 
                 found, d_id = add_to_role(
@@ -544,12 +502,13 @@ class Roles(commands.Cog):
                     )
                 else:
                     try:
-                        await interaction.user.add_roles(
+                        user_member = cast(nextcord.Member, interaction.user)
+                        await user_member.add_roles(
                             role, reason="Added through role add command."
                         )
 
                         embed.title = (
-                            f"*{interaction.user.name}* has been "
+                            f"*{user_member.name}* has been "
                             f"added to *{role.name}*!"
                         )
                         embed.colour = Colors.success
@@ -564,7 +523,8 @@ class Roles(commands.Cog):
                         embed.title = "Something happened, didn't succeed :/"
                         embed.colour = Colors.error
 
-        embed.timestamp = datetime.utcnow()
+        self._append_deprecation_notice(embed)
+        embed.timestamp = datetime.now(timezone.utc)
         await interaction.send(embed=embed, ephemeral=True)
 
     @role.command(pass_context=True, no_pm=True)
@@ -575,48 +535,13 @@ class Roles(commands.Cog):
         :param name: Role name
         :return:
         """
-        embed = Embed()
-        embed.set_author(
-            name=self.__bot.user.name,
-            url=settings.URL,
-            icon_url=self.__bot.user.avatar.url,
+        embed = self._base_embed()
+        embed.title = "Role command deprecated"
+        embed.description = (
+            "The role add command is deprecated. "
+            "Please use onboarding instead."
         )
-        async with session_lock:
-            with Session() as session:
-                db_member = get_create_ctx(ctx, session, members.member)
-
-                found, d_id = add_to_role(session, db_member.uuid, role_name=name)
-
-                # If role is not found
-                if not found:
-                    embed.title = "This role is not assignable!"
-                    embed.colour = Colors.error
-                    embed.description = (
-                        "This role doesn't exists or " "it is not assignable."
-                    )
-                else:
-                    try:
-                        role = ctx.guild.get_role(int(d_id))
-                        await ctx.author.add_roles(
-                            role, reason="Added through role add command."
-                        )
-
-                        embed.title = (
-                            f"*{ctx.author.name}* has been " f"added to *{name}*!"
-                        )
-                        embed.colour = Colors.success
-                    except Forbidden:
-                        embed.title = "I don't have a permission to do that :("
-                        embed.colour = Colors.unauthorized
-                        embed.description = (
-                            "Give me a permission to manage"
-                            " roles or give me a higher role."
-                        )
-                    except HTTPException:
-                        embed.title = "Something happened, didn't succeed :/"
-                        embed.colour = Colors.error
-
-        embed.timestamp = datetime.utcnow()
+        embed.timestamp = datetime.now(timezone.utc)
         await ctx.send(embed=embed)
 
     @slash_role.subcommand(name="remove")
@@ -633,14 +558,9 @@ class Roles(commands.Cog):
         :param role: Discord role
         :return:
         """
-        embed = Embed()
-        embed.set_author(
-            name=self.__bot.user.name,
-            url=settings.URL,
-            icon_url=self.__bot.user.avatar.url,
-        )
+        embed = self._base_embed()
         async with session_lock:
-            with Session() as session:
+            with SessionLocal() as session:
                 db_member = get_create_ctx(interaction, session, members.member)
 
                 success, d_id = remove_from_role(
@@ -656,12 +576,13 @@ class Roles(commands.Cog):
                     )
                 else:
                     try:
-                        await interaction.user.remove_roles(
+                        user_member = cast(nextcord.Member, interaction.user)
+                        await user_member.remove_roles(
                             role, reason="Removed through role remove command."
                         )
 
                         embed.title = (
-                            f"*{interaction.user.name}* has been "
+                            f"*{user_member.name}* has been "
                             f"removed from *{role.name}*!"
                         )
                         embed.colour = Colors.success
@@ -676,7 +597,8 @@ class Roles(commands.Cog):
                         embed.title = "Something happened, didn't succeed :/"
                         embed.colour = Colors.error
 
-        embed.timestamp = datetime.utcnow()
+        self._append_deprecation_notice(embed)
+        embed.timestamp = datetime.now(timezone.utc)
         await interaction.send(embed=embed, ephemeral=True)
 
     @role.command(pass_context=True, no_pm=True)
@@ -687,49 +609,13 @@ class Roles(commands.Cog):
         :param name: Role name
         :return:
         """
-        embed = Embed()
-        embed.set_author(
-            name=self.__bot.user.name,
-            url=settings.URL,
-            icon_url=self.__bot.user.avatar.url,
+        embed = self._base_embed()
+        embed.title = "Role command deprecated"
+        embed.description = (
+            "The role remove command is deprecated. "
+            "Please use onboarding instead."
         )
-        async with session_lock:
-            with Session() as session:
-                db_member = get_create_ctx(ctx, session, members.member)
-
-                success, d_id = remove_from_role(
-                    session, db_member.uuid, role_name=name
-                )
-
-                if not success:
-                    embed.title = "This role is not assignable!"
-                    embed.colour = Colors.error
-                    embed.description = (
-                        "This role doesn't exists or " "it is not assignable."
-                    )
-                else:
-                    try:
-                        role = ctx.guild.get_role(int(d_id))
-                        await ctx.author.remove_roles(
-                            role, reason="Removed through role remove command."
-                        )
-
-                        embed.title = (
-                            f"*{ctx.author.name}* has been " f"removed from *{name}*!"
-                        )
-                        embed.colour = Colors.success
-                    except Forbidden:
-                        embed.title = "I don't have a permission to do that :("
-                        embed.colour = Colors.unauthorized
-                        embed.description = (
-                            "Give me a permission to manage"
-                            " roles or give me a higher role."
-                        )
-                    except HTTPException:
-                        embed.title = "Something happened, didn't succeed :/"
-                        embed.colour = Colors.error
-
-        embed.timestamp = datetime.utcnow()
+        embed.timestamp = datetime.now(timezone.utc)
         await ctx.send(embed=embed)
 
     @slash_role.subcommand(name="create")
@@ -763,14 +649,9 @@ class Roles(commands.Cog):
         :param emoji: Emoji for assignment via reactions
         :return:
         """
-        embed = Embed()
-        embed.set_author(
-            name=self.__bot.user.name,
-            url=settings.URL,
-            icon_url=self.__bot.user.avatar.url,
-        )
+        embed = self._base_embed()
         async with session_lock:
-            with Session() as session:
+            with SessionLocal() as session:
                 d_role = role
                 db_role = role_crud.get_by_discord(session, str(d_role.id))
 
@@ -781,7 +662,7 @@ class Roles(commands.Cog):
                     embed.title = "Role already exists!"
                     embed.colour = Colors.other
                 else:
-                    role = CreateRole(
+                    create_role = CreateRole(
                         **{
                             "discord_id": str(role.id),
                             "name": d_role.name,
@@ -792,7 +673,7 @@ class Roles(commands.Cog):
                         }
                     )
 
-                    db_role = role_crud.create(session, obj_in=role)
+                    db_role = role_crud.create(session, obj_in=create_role)
 
                     logger.debug(emoji)
 
@@ -802,7 +683,9 @@ class Roles(commands.Cog):
 
                         if isinstance(emoji, str):
                             pattern = re.compile(r"<:(?P<name>\w+):(?P<id>\d+)>")
-                            emoji = pattern.match(emoji).group("name")
+                            match = pattern.match(emoji)
+                            if match is not None:
+                                emoji = match.group("name")
                         elif hasattr(emoji, "name"):
                             emoji = emoji.name
 
@@ -826,12 +709,13 @@ class Roles(commands.Cog):
 
                     embed.title = f"Role *{db_role.name}* created."
                     embed.colour = Colors.success
-        embed.timestamp = datetime.utcnow()
+        self._append_deprecation_notice(embed)
+        embed.timestamp = datetime.now(timezone.utc)
         await interaction.send(embed=embed, ephemeral=True)
 
     @role.command(pass_context=True, no_pm=True)
     @commands.has_permissions(administrator=True)
-    async def create(self, ctx, discord_id: int, description: str, emoji: str = None):
+    async def create(self, ctx, discord_id: int, description: str, emoji: str | None = None):
         """
         Create assignable role
 
@@ -841,84 +725,13 @@ class Roles(commands.Cog):
         :param emoji: Emoji for assignment via reactions
         :return:
         """
-        embed = Embed()
-        embed.set_author(
-            name=self.__bot.user.name,
-            url=settings.URL,
-            icon_url=self.__bot.user.avatar.url,
+        embed = self._base_embed()
+        embed.title = "Role command deprecated"
+        embed.description = (
+            "The role create command is deprecated. "
+            "Please use onboarding instead."
         )
-        async with session_lock:
-            with Session() as session:
-                d_role = ctx.guild.get_role(discord_id)
-                db_role = role_crud.get_by_discord(session, discord_id)
-
-                # TODO Add emoji parsing
-
-                if d_role is None:
-                    embed.title = "Role not found."
-                    embed.colour = Colors.error
-                elif db_role is not None:
-                    embed.title = "Role already exists!"
-                    embed.colour = Colors.other
-                else:
-                    role = CreateRole(
-                        **{
-                            "discord_id": discord_id,
-                            "name": d_role.name,
-                            "description": description,
-                            "server_uuid": get_create_ctx(
-                                ctx, session, server_crud
-                            ).uuid,
-                        }
-                    )
-
-                    db_role = role_crud.create(session, obj_in=role)
-
-                    if emoji is not None:
-                        converter = commands.EmojiConverter()
-                        pconverter = commands.PartialEmojiConverter()
-
-                        try:
-                            # Convert into actual emoji
-                            e = await converter.convert(ctx, emoji)
-                        except commands.EmojiNotFound:
-                            # Try partial emoji instead
-                            try:
-                                e = await pconverter.convert(ctx, emoji)
-                            except commands.PartialEmojiConversionFailure:
-                                # Assume that it is an unicode emoji
-                                e = emoji
-                    else:
-                        e = None
-
-                    if e is not None and not isinstance(
-                            e, nextcord.partial_emoji.PartialEmoji
-                    ):
-
-                        if hasattr(e, "name"):
-                            e = e.name
-
-                        db_e = CreateRoleEmoji(
-                            **{"identifier": e, "role_uuid": db_role.uuid}
-                        )
-                        emoji_crud.create(session, obj_in=db_e)
-                    elif isinstance(emoji, nextcord.partial_emoji.PartialEmoji):
-                        embed.description = (
-                            "**Note**: Role was created"
-                            " without an emoji, because the bot "
-                            "cannot use provided emoji..."
-                        )
-                    else:
-                        embed.description = (
-                            "**Note**: Role was created"
-                            " without an emoji, so it "
-                            "cannot be assigned with "
-                            "reactions!"
-                        )
-
-                    embed.title = f"Role *{db_role.name}* created."
-                    embed.colour = Colors.success
-        embed.timestamp = datetime.utcnow()
+        embed.timestamp = datetime.now(timezone.utc)
         await ctx.send(embed=embed)
 
     @slash_role.subcommand(name="update")
@@ -947,20 +760,18 @@ class Roles(commands.Cog):
         :param description: New description of Role
         :return:
         """
-        embed = Embed()
-        embed.set_author(
-            name=self.__bot.user.name,
-            url=settings.URL,
-            icon_url=self.__bot.user.avatar.url,
-        )
+        embed = self._base_embed()
         async with session_lock:
-            with Session() as session:
+            with SessionLocal() as session:
                 db_role = role_crud.get_by_discord(session, str(role))
                 if db_role is None:
                     embed.title = "Role not found"
                     embed.colour = Colors.error
                 else:
-                    role_update = UpdateRole(**{"description": description})
+                    role_update = UpdateRole(
+                        name=db_role.name,
+                        description=description,
+                    )
 
                     db_role = role_crud.update(
                         session, db_obj=db_role, obj_in=role_update
@@ -969,7 +780,8 @@ class Roles(commands.Cog):
                     embed.title = f"Role *{db_role.name}* updated."
                     embed.colour = Colors.success
 
-        embed.timestamp = datetime.utcnow()
+        self._append_deprecation_notice(embed)
+        embed.timestamp = datetime.now(timezone.utc)
         await interaction.send(embed=embed, ephemeral=True)
 
     @role.command(pass_context=True, no_pm=True)
@@ -983,29 +795,13 @@ class Roles(commands.Cog):
         :param description: New description of Role
         :return:
         """
-        embed = Embed()
-        embed.set_author(
-            name=self.__bot.user.name,
-            url=settings.URL,
-            icon_url=self.__bot.user.avatar.url,
+        embed = self._base_embed()
+        embed.title = "Role command deprecated"
+        embed.description = (
+            "The role update command is deprecated. "
+            "Please use onboarding instead."
         )
-        async with session_lock:
-            with Session() as session:
-                db_role = role_crud.get_by_discord(session, discord_id)
-                if db_role is None:
-                    embed.title = "Role not found"
-                    embed.colour = Colors.error
-                else:
-                    role_update = UpdateRole(**{"description": description})
-
-                    db_role = role_crud.update(
-                        session, db_obj=db_role, obj_in=role_update
-                    )
-
-                    embed.title = f"Role *{db_role.name}* updated."
-                    embed.colour = Colors.success
-
-        embed.timestamp = datetime.utcnow()
+        embed.timestamp = datetime.now(timezone.utc)
         await ctx.send(embed=embed)
 
     @slash_role.subcommand(name="delete")
@@ -1025,30 +821,28 @@ class Roles(commands.Cog):
         :return:
         """
 
-        embed = Embed()
-        embed.set_author(
-            name=self.__bot.user.name,
-            url=settings.URL,
-            icon_url=self.__bot.user.avatar.url,
-        )
+        embed = self._base_embed()
         async with session_lock:
-            with Session() as session:
+            with SessionLocal() as session:
                 db_role = role_crud.get_by_discord(session, str(role.id))
 
                 if db_role is None:
                     embed.title = "Role not found"
                     embed.colour = Colors.error
                 else:
-                    db_emoji = emoji_crud.get_by_role(session, db_role.uuid)
+                    db_role_uuid = UUID(str(db_role.uuid))
+                    db_emoji = emoji_crud.get_by_role(session, db_role_uuid)
+                    role_name = db_role.name
 
                     if db_emoji is not None:
                         emoji_crud.remove(session, uuid=db_emoji.uuid)
 
-                    db_role = role_crud.remove(session, uuid=db_role.uuid)
-                    embed.title = f"Role *{db_role.name}* removed."
+                    role_crud.remove(session, uuid=db_role_uuid)
+                    embed.title = f"Role *{role_name}* removed."
                     embed.colour = Colors.success
 
-        embed.timestamp = datetime.utcnow()
+        self._append_deprecation_notice(embed)
+        embed.timestamp = datetime.now(timezone.utc)
         await interaction.send(embed=embed, ephemeral=True)
 
     @role.command(pass_context=True, no_pm=True)
@@ -1061,30 +855,13 @@ class Roles(commands.Cog):
         :param discord_id: Role Discord ID
         :return:
         """
-        embed = Embed()
-        embed.set_author(
-            name=self.__bot.user.name,
-            url=settings.URL,
-            icon_url=self.__bot.user.avatar.url,
+        embed = self._base_embed()
+        embed.title = "Role command deprecated"
+        embed.description = (
+            "The role delete command is deprecated. "
+            "Please use onboarding instead."
         )
-        async with session_lock:
-            with Session() as session:
-                db_role = role_crud.get_by_discord(session, discord_id)
-
-                if db_role is None:
-                    embed.title = "Role not found"
-                    embed.colour = Colors.error
-                else:
-                    db_emoji = emoji_crud.get_by_role(session, db_role.uuid)
-
-                    if db_emoji is not None:
-                        emoji_crud.remove(session, uuid=db_emoji.uuid)
-
-                    db_role = role_crud.remove(session, uuid=db_role.uuid)
-                    embed.title = f"Role *{db_role.name}* removed."
-                    embed.colour = Colors.success
-
-        embed.timestamp = datetime.utcnow()
+        embed.timestamp = datetime.now(timezone.utc)
         await ctx.send(embed=embed)
 
     @slash_role.subcommand(name="list")
@@ -1095,21 +872,22 @@ class Roles(commands.Cog):
         :param interaction: Interaction
         :return:
         """
-        embed = Embed()
-        embed.set_author(
-            name=self.__bot.user.name,
-            url=settings.URL,
-            icon_url=self.__bot.user.avatar.url,
-        )
+        embed = self._base_embed()
         async with session_lock:
-            with Session() as session:
+            with SessionLocal() as session:
                 # Get server interfaces
                 server = get_create_ctx(interaction, session, server_crud)
 
-                # Get roles for server
-                roles = role_crud.get_multi_by_server_uuid(session, server.uuid)
+                guild = interaction.guild
+                if guild is None:
+                    return
 
-                embed.title = f"Roles for *{interaction.guild.name}*"
+                # Get roles for server
+                roles = role_crud.get_multi_by_server_uuid(
+                    session, server.uuid
+                )
+
+                embed.title = f"Roles for *{guild.name}*"
                 embed.colour = Colors.success
 
                 # List all roles for current server
@@ -1118,8 +896,9 @@ class Roles(commands.Cog):
                         name=role.name, value=role.description, inline=False
                     )
 
-        embed.timestamp = datetime.utcnow()
-        await interaction.send(embed=embed)
+        self._append_deprecation_notice(embed)
+        embed.timestamp = datetime.now(timezone.utc)
+        await interaction.send(embed=embed, ephemeral=True)
 
     @role.command(pass_context=True, no_pm=True)
     async def list(self, ctx):
@@ -1129,30 +908,13 @@ class Roles(commands.Cog):
         :param ctx: Context
         :return:
         """
-        embed = Embed()
-        embed.set_author(
-            name=self.__bot.user.name,
-            url=settings.URL,
-            icon_url=self.__bot.user.avatar.url,
+        embed = self._base_embed()
+        embed.title = "Role command deprecated"
+        embed.description = (
+            "The role list command is deprecated. "
+            "Please use onboarding instead."
         )
-        async with session_lock:
-            with Session() as session:
-                # Get server interfaces
-                server = get_create_ctx(ctx, session, server_crud)
-
-                # Get roles for server
-                roles = role_crud.get_multi_by_server_uuid(session, server.uuid)
-
-                embed.title = f"Roles for *{ctx.guild.name}*"
-                embed.colour = Colors.success
-
-                # List all roles for current server
-                for role in roles:
-                    embed.add_field(
-                        name=role.name, value=role.description, inline=False
-                    )
-
-        embed.timestamp = datetime.utcnow()
+        embed.timestamp = datetime.now(timezone.utc)
         await ctx.send(embed=embed)
 
     @slash_role.subcommand(name="init")
@@ -1166,35 +928,47 @@ class Roles(commands.Cog):
         """
 
         async with session_lock:
-            with Session() as session:
+            with SessionLocal() as session:
                 db_server = get_create_ctx(interaction, session, server_crud)
 
+                guild = interaction.guild
+                channel = interaction.channel
+                if guild is None or channel is None:
+                    return
+
                 embed = Embed()
-                embed.title = f"Assignable roles for **{interaction.guild.name}**"
+                embed.title = f"Assignable roles for **{guild.name}**"
                 embed.description = (
                     "Use reactions inorder to get "
                     "roles assigned to you, or use "
-                    "`!role add roleName`"
+                    "`/role add`"
                 )
 
                 # Send message
-                role_message = await interaction.send(embed=embed)
-                role_message = await role_message.fetch()
+                if not hasattr(channel, "send"):
+                    await interaction.send(
+                        "Current channel cannot receive messages.",
+                        ephemeral=True,
+                    )
+                    return
+
+                role_message = await cast(nextcord.TextChannel, channel).send(embed=embed)
+
+                await interaction.send(
+                    "Role message initialized in this channel.\n\n"
+                    "⚠️ This slash command is deprecated. Please use onboarding instead.",
+                    ephemeral=True,
+                )
 
                 # Update server object to include role message interfaces
                 server_update = UpdateServer(
                     **{
                         "role_message": str(role_message.id),
-                        "role_channel": str(interaction.channel.id),
+                        "role_channel": str(channel.id),
                     }
                 )
 
                 server_crud.update(session, db_obj=db_server, obj_in=server_update)
-
-                ctx = await self.__bot.get_context(role_message)
-
-                converter = commands.EmojiConverter()
-                pconverter = commands.PartialEmojiConverter()
 
                 # Get all roles on the server
                 roles = role_crud.get_multi_by_server_uuid(
@@ -1209,17 +983,7 @@ class Roles(commands.Cog):
                     emoji = emoji_crud.get_by_role(session, r.uuid)
 
                     if emoji is not None:
-
-                        try:
-                            # Convert into actual emoji
-                            e = await converter.convert(ctx, emoji.identifier)
-                        except commands.EmojiNotFound:
-                            # Try partial emoji instead
-                            try:
-                                e = await pconverter.convert(ctx, emoji.identifier)
-                            except commands.PartialEmojiConversionFailure:
-                                # Assume that it is an unicode emoji
-                                e = emoji.identifier
+                        e = emoji.identifier
 
                         # Add to message
                         embed.add_field(
@@ -1245,68 +1009,8 @@ class Roles(commands.Cog):
         :param ctx: Context
         :return:
         """
-        async with session_lock:
-            with Session() as session:
-                db_server = get_create_ctx(ctx, session, server_crud)
-
-                embed = Embed()
-                embed.title = f"Assignable roles for **{ctx.guild.name}**"
-                embed.description = (
-                    "Use reactions inorder to get "
-                    "roles assigned to you, or use "
-                    "`!role add roleName`"
-                )
-
-                converter = commands.EmojiConverter()
-                pconverter = commands.PartialEmojiConverter()
-
-                # Get all roles on the server
-                roles = role_crud.get_multi_by_server_uuid(
-                    session, get_create_ctx(ctx, session, server_crud).uuid
-                )
-
-                # Gather all used emojis for future reactions
-                emojis = []
-
-                for r in roles:
-
-                    emoji = emoji_crud.get_by_role(session, r.uuid)
-
-                    if emoji is not None:
-
-                        try:
-                            # Convert into actual emoji
-                            e = await converter.convert(ctx, emoji.identifier)
-                        except commands.EmojiNotFound:
-                            # Try partial emoji instead
-                            try:
-                                e = await pconverter.convert(ctx, emoji.identifier)
-                            except commands.PartialEmojiConversionFailure:
-                                # Assume that it is an unicode emoji
-                                e = emoji.identifier
-
-                        # Add to message
-                        embed.add_field(
-                            name=f"{str(e)}  ==  {r.name}",
-                            value=r.description,
-                            inline=False,
-                        )
-
-                        emojis.append(e)
-
-                # Send message
-                role_message = await ctx.send(embed=embed)
-
-                # Add reaction to message with all used emojis
-                for e in emojis:
-                    await role_message.add_reaction(e)
-
-                # Update server object to include role message interfaces
-                server_update = UpdateServer(
-                    **{
-                        "role_message": str(role_message.id),
-                        "role_channel": str(ctx.channel.id),
-                    }
-                )
-
-                server_crud.update(session, db_obj=db_server, obj_in=server_update)
+        embed = self._base_embed()
+        embed.title = "Use slash command instead"
+        embed.description = "Please use `/role init` to initialize the role message."
+        embed.timestamp = datetime.now(timezone.utc)
+        await ctx.send(embed=embed)

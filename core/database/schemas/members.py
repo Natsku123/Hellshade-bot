@@ -1,6 +1,5 @@
 from uuid import UUID
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, ConfigDict
 
 
 class MemberBase(BaseModel):
@@ -9,8 +8,7 @@ class MemberBase(BaseModel):
     server_uuid: UUID
     level_uuid: UUID | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CreateMember(MemberBase):
@@ -18,5 +16,5 @@ class CreateMember(MemberBase):
 
 
 class UpdateMember(BaseModel):
-    exp: int | None
-    level_uuid: UUID | None
+    exp: int | None = None
+    level_uuid: UUID | None = None

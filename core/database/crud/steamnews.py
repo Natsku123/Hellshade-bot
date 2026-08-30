@@ -3,7 +3,7 @@ from core.database.schemas import steamnews as schemas
 from core.database.crud import CRUDBase, ModelType
 from sqlalchemy.orm import Session
 from sqlalchemy.future import select
-from typing import Optional, Union, List
+from typing import Optional, Union, List, cast
 
 
 class CRUDPost(CRUDBase[Post, schemas.CreatePost, schemas.UpdatePost]):
@@ -16,7 +16,7 @@ class CRUDPost(CRUDBase[Post, schemas.CreatePost, schemas.UpdatePost]):
         """
         query = select(self.model).where(self.model.steam_gid == gid)
         result = db.execute(query)
-        return result.scalars().first()
+        return cast(Optional[ModelType], result.scalars().first())
 
 
 class CRUDSubscription(CRUDBase[Subscription, schemas.CreateSubscription, schemas.UpdateSubscription]):
@@ -33,7 +33,7 @@ class CRUDSubscription(CRUDBase[Subscription, schemas.CreateSubscription, schema
             channel_id = str(channel_id)
         query = select(self.model).where(self.model.channel_id == channel_id)
         result = db.execute(query)
-        return result.scalars().all()
+        return list(cast(List[ModelType], result.scalars().all()))
 
 
 post = CRUDPost(Post)

@@ -1,0 +1,13 @@
+http:
+  routers:
+    next-router:
+      entryPoints:
+        - web
+      rule: Host(`localhost`) || Host(`bot.localhost`)
+      service: next-service
+
+  services:
+    next-service:
+      loadBalancer:
+        servers:
+          - url: http://host.docker.internal:3000

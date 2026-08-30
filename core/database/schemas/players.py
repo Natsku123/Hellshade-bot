@@ -1,5 +1,4 @@
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, ConfigDict
 
 
 class PlayerBase(BaseModel):
@@ -8,8 +7,7 @@ class PlayerBase(BaseModel):
     name: str
     hidden: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CreatePlayer(BaseModel):
@@ -19,6 +17,6 @@ class CreatePlayer(BaseModel):
 
 
 class UpdatePlayer(BaseModel):
-    name: str | None
-    hidden: bool | None
-    steam_id: str | None
+    name: str | None = None
+    hidden: bool | None = None
+    steam_id: str | None = None

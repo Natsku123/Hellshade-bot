@@ -1,0 +1,68 @@
+services:
+  webui:
+    build:
+      context: webui
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+    ports:
+      - "3000:3000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.hbot-webui.rule=Host(`bot.localhost`) || Host(`localhost`)"
+      - "traefik.http.routers.hbot-webui.entrypoints=web"
+      - "traefik.http.services.hbot-webui.loadbalancer.server.port=3000"
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      TOKEN: ${TOKEN}
+      OWNER: ${OWNER}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      ADMINS: ${ADMINS}
+    volumes:
+      - ./files:/files
+      - ./alembic:/bot/alembic
+    shm_size: '2gb'
+
+  db:
+    image: postgres:13-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - ./data:/var/lib/postgresql/data/
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: "pg_isready --username=${DB_USER} --dbname=${DB_NAME}"
+      timeout: 10s
+      retries: 20
+
+  traefik:
+    image: traefik:v3.6
+    command:
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.file.filename=/etc/traefik/dynamic.yml"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro

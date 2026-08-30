@@ -1,18 +1,18 @@
-FROM python:3.12-slim
+FROM python:3.13-slim-trixie
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 LABEL maintainer="Max Mecklin <max@meckl.in>"
 
 WORKDIR /bot
 
-COPY ./requirements.txt /bot/requirements.txt
+ADD . /bot
 
-RUN pip3.12 install -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --compile-bytecode
 
-COPY . /bot
-
-ENV PYTHONPATH "${PYTHONPATH}:/bot"
+ENV PYTHONPATH="${PYTHONPATH}:/bot"
 
 RUN ["chmod", "+x", "/bot/docker-entrypoint.sh"]
 
 ENTRYPOINT ["/bot/docker-entrypoint.sh"]
-CMD ["python3.12", "main.py"]
+CMD ["uv", "run", "main.py"]

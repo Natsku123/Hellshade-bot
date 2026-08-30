@@ -1,24 +1,31 @@
-from nextcord import SlashOption
+from nextcord import InteractionContextType, SlashOption
 from nextcord.ext import commands, tasks
 import nextcord
 import datetime
 import json
 import asyncio
 import math
+from typing import cast
+from nextcord.abc import Messageable
 from core.database import Session, session_lock
 from core.config import settings, logger
 from core.database.crud.servers import server as crud_server
 from core.database.crud.players import player as crud_player
 from core.database.crud.members import member as crud_member
 from core.database.crud.levels import level as crud_level
+from core.database.crud.commands import command as crud_command
 from core.database.schemas.players import CreatePlayer
 from core.database.schemas.servers import CreateServer
 from core.database.schemas.members import CreateMember
 from core.database.schemas.levels import CreateLevel
 from core.database.schemas.commands import CreateCommand, UpdateCommand
-from core.database.utils import get_create, get_create_ctx
+from core.database.utils import (
+    get_create,
+    ensure_server_player_member,
+    ensure_server_player_member_ctx,
+    get_create_ctx,
+)
 from core.utils import (
-    progress_bar,
     level_exp,
     process_exp,
     get_admins,
@@ -27,7 +34,14 @@ from core.utils import (
     gets_exp,
 )
 
-import core.database.crud.commands
+def _typing_channel(ctx: nextcord.Interaction) -> Messageable:
+    assert ctx.channel is not None
+    return cast(Messageable, ctx.channel)
+
+
+def _interaction_user(ctx: nextcord.Interaction):
+    assert ctx.user is not None
+    return ctx.user
 
 
 class Utility(commands.Cog):
@@ -39,6 +53,38 @@ class Utility(commands.Cog):
         self.weekly_top5.start()
         self.online_experience.start()
 
+    def _apply_exp_gain(self, session, db_member, exp_gain: int):
+        if db_member.level is not None:
+            level_value = db_member.level.value + 1
+        else:
+            level_value = 1
+
+        next_level = get_create(
+            session,
+            crud_level,
+            obj_in=CreateLevel(
+                value=level_value,
+                exp=level_exp(level_value),
+            ),
+        )
+
+        if db_member.exp + exp_gain < next_level.exp:
+            crud_member.update(
+                session,
+                db_obj=db_member,
+                obj_in={"exp": db_member.exp + exp_gain},
+            )
+            return None
+
+        return crud_member.update(
+            session,
+            db_obj=db_member,
+            obj_in={
+                "exp": (db_member.exp + exp_gain - next_level.exp),
+                "level_uuid": next_level.uuid,
+            },
+        )
+
     @commands.Cog.listener()
     async def on_server_join(self, server):
         async with session_lock:
@@ -47,12 +93,10 @@ class Utility(commands.Cog):
                     session,
                     crud_server,
                     obj_in=CreateServer(
-                        **{
-                            "discord_id": str(server.id),
-                            "name": server.name,
-                            "server_exp": 0,
-                            "channel": None,
-                        }
+                        discord_id=str(server.id),
+                        name=server.name,
+                        server_exp=0,
+                        channel=None,
                     ),
                 )
 
@@ -60,36 +104,12 @@ class Utility(commands.Cog):
     async def on_member_join(self, member):
         async with session_lock:
             with Session() as session:
-                db_player = get_create(
+                ensure_server_player_member(
                     session,
-                    crud_player,
-                    obj_in=CreatePlayer(
-                        **{"discord_id": member.id, "name": member.name, "hidden": True}
-                    ),
-                )
-                db_server = get_create(
-                    session,
-                    crud_server,
-                    obj_in=CreateServer(
-                        **{
-                            "discord_id": str(member.guild.id),
-                            "name": member.guild.name,
-                            "server_exp": 0,
-                            "channel": None,
-                        }
-                    ),
-                )
-                get_create(
-                    session,
-                    crud_member,
-                    obj_in=CreateMember(
-                        **{
-                            "exp": 0,
-                            "player_uuid": db_player.uuid,
-                            "server_uuid": db_server.uuid,
-                            "level_uuid": None,
-                        }
-                    ),
+                    guild_id=member.guild.id,
+                    guild_name=member.guild.name,
+                    player_id=member.id,
+                    player_name=member.name,
                 )
 
     @commands.Cog.listener()
@@ -97,71 +117,16 @@ class Utility(commands.Cog):
         if message.author.id != self.__bot.user.id and not message.author.bot:
             async with session_lock:
                 with Session() as session:
-                    db_server = get_create(
+                    db_server, _, db_member = ensure_server_player_member(
                         session,
-                        crud_server,
-                        obj_in=CreateServer(
-                            **{
-                                "discord_id": str(message.guild.id),
-                                "name": message.guild.name,
-                                "server_exp": 0,
-                                "channel": None,
-                            }
-                        ),
-                    )
-                    db_player = get_create(
-                        session,
-                        crud_player,
-                        obj_in=CreatePlayer(
-                            **{
-                                "discord_id": str(message.author.id),
-                                "name": message.author.name,
-                                "hidden": True,
-                            }
-                        ),
+                        guild_id=message.guild.id,
+                        guild_name=message.guild.name,
+                        player_id=message.author.id,
+                        player_name=message.author.name,
                     )
 
-                    db_member = get_create(
-                        session,
-                        crud_member,
-                        obj_in=CreateMember(
-                            **{
-                                "exp": 0,
-                                "player_uuid": db_player.uuid,
-                                "server_uuid": db_server.uuid,
-                                "level_uuid": None,
-                            }
-                        ),
-                    )
-
-                    if db_member.level is not None:
-                        level_value = db_member.level.value + 1
-                    else:
-                        level_value = 1
-
-                    next_level = get_create(
-                        session,
-                        crud_level,
-                        obj_in=CreateLevel(
-                            **{"value": level_value, "exp": level_exp(level_value)}
-                        ),
-                    )
-
-                    if db_member.exp + 25 < next_level.exp:
-                        crud_member.update(
-                            session,
-                            db_obj=db_member,
-                            obj_in={"exp": db_member.exp + 25},
-                        )
-                    else:
-                        db_member = crud_member.update(
-                            session,
-                            db_obj=db_member,
-                            obj_in={
-                                "exp": (db_member.exp + 25 - next_level.exp),
-                                "level_uuid": next_level.uuid,
-                            },
-                        )
+                    db_member = self._apply_exp_gain(session, db_member, 25)
+                    if db_member is not None:
                         if db_member.server.channel is not None:
                             embed = nextcord.Embed()
                             embed.set_author(
@@ -187,70 +152,16 @@ class Utility(commands.Cog):
         if not user.bot:
             async with session_lock:
                 with Session() as session:
-                    db_server = get_create(
+                    db_server, _, db_member = ensure_server_player_member(
                         session,
-                        crud_server,
-                        obj_in=CreateServer(
-                            **{
-                                "discord_id": str(user.guild.id),
-                                "name": user.guild.name,
-                                "server_exp": 0,
-                                "channel": None,
-                            }
-                        ),
-                    )
-                    db_player = get_create(
-                        session,
-                        crud_player,
-                        obj_in=CreatePlayer(
-                            **{
-                                "discord_id": str(user.id),
-                                "name": user.name,
-                                "hidden": True,
-                            }
-                        ),
-                    )
-                    db_member = get_create(
-                        session,
-                        crud_member,
-                        obj_in=CreateMember(
-                            **{
-                                "exp": 0,
-                                "player_uuid": db_player.uuid,
-                                "server_uuid": db_server.uuid,
-                                "level_uuid": None,
-                            }
-                        ),
+                        guild_id=user.guild.id,
+                        guild_name=user.guild.name,
+                        player_id=user.id,
+                        player_name=user.name,
                     )
 
-                    if db_member.level is not None:
-                        level_value = db_member.level.value + 1
-                    else:
-                        level_value = 1
-
-                    next_level = get_create(
-                        session,
-                        crud_level,
-                        obj_in=CreateLevel(
-                            **{"value": level_value, "exp": level_exp(level_value)}
-                        ),
-                    )
-
-                    if db_member.exp + 10 < next_level.exp:
-                        crud_member.update(
-                            session,
-                            db_obj=db_member,
-                            obj_in={"exp": db_member.exp + 10},
-                        )
-                    else:
-                        db_member = crud_member.update(
-                            session,
-                            db_obj=db_member,
-                            obj_in={
-                                "exp": (db_member.exp + 10 - next_level.exp),
-                                "level_uuid": next_level.uuid,
-                            },
-                        )
+                    db_member = self._apply_exp_gain(session, db_member, 10)
+                    if db_member is not None:
                         if db_member.server.channel is not None:
                             embed = nextcord.Embed()
                             embed.set_author(
@@ -286,12 +197,10 @@ class Utility(commands.Cog):
                         session,
                         crud_server,
                         obj_in=CreateServer(
-                            **{
-                                "discord_id": str(server.id),
-                                "name": server.name,
-                                "server_exp": 0,
-                                "channel": None,
-                            }
+                            discord_id=str(server.id),
+                            name=server.name,
+                            server_exp=0,
+                            channel=None,
                         ),
                     )
 
@@ -335,42 +244,12 @@ class Utility(commands.Cog):
             with Session() as session:
                 leveled_up = {}
                 for member in filter(gets_exp, self.__bot.get_all_members()):
-                    player_obj = get_create(
+                    server_obj, _, member_obj = ensure_server_player_member(
                         session,
-                        crud_player,
-                        obj_in=CreatePlayer(
-                            **{
-                                "discord_id": str(member.id),
-                                "name": member.name,
-                                "hidden": True,
-                            }
-                        ),
-                    )
-
-                    server_obj = get_create(
-                        session,
-                        crud_server,
-                        obj_in=CreateServer(
-                            **{
-                                "discord_id": str(member.guild.id),
-                                "name": member.guild.name,
-                                "server_exp": 0,
-                                "channel": None,
-                            }
-                        ),
-                    )
-
-                    member_obj = get_create(
-                        session,
-                        crud_member,
-                        obj_in=CreateMember(
-                            **{
-                                "exp": 0,
-                                "player_uuid": player_obj.uuid,
-                                "server_uuid": server_obj.uuid,
-                                "level_uuid": None,
-                            }
-                        ),
+                        guild_id=member.guild.id,
+                        guild_name=member.guild.name,
+                        player_id=member.id,
+                        player_name=member.name,
                     )
 
                     base_exp = 5
@@ -388,36 +267,8 @@ class Utility(commands.Cog):
                         * (len(member.voice.channel.members) / 4 * base_exp)
                     )
 
-                    if member_obj.level is not None:
-                        next_level = crud_level.get_by_value(
-                            session, member_obj.level.value + 1
-                        )
-                    else:
-                        next_level = crud_level.get_by_value(session, 1)
-
-                    if next_level is None and member_obj.level is not None:
-                        member_dict = {
-                            "exp": level_exp(member_obj.level.value + 1),
-                            "value": member_obj.level.value + 1,
-                        }
-
-                        next_level = crud_level.create(CreateMember(**member_dict))
-
-                    if member_obj.exp + exp < next_level.exp:
-                        crud_member.update(
-                            session,
-                            db_obj=member_obj,
-                            obj_in={"exp": member_obj.exp + exp},
-                        )
-                    else:
-                        member_obj = crud_member.update(
-                            session,
-                            db_obj=member_obj,
-                            obj_in={
-                                "exp": member_obj.exp + exp - next_level.exp,
-                                "level_uuid": next_level.uuid,
-                            },
-                        )
+                    member_obj = self._apply_exp_gain(session, member_obj, exp)
+                    if member_obj is not None:
                         if server_obj.channel is not None:
                             if server_obj.channel in leveled_up:
                                 leveled_up[server_obj.channel].append(member_obj)
@@ -447,10 +298,10 @@ class Utility(commands.Cog):
                             f"a voice channel."
                         )
                     else:
-                        embed.title = f"1 player leveled up!"
+                        embed.title = "1 player leveled up!"
                         embed.description = (
-                            f"1 player leveled up by being "
-                            f"active on a voice channel."
+                            "1 player leveled up by being "
+                            "active on a voice channel."
                         )
 
                     embed.colour = 9442302
@@ -467,7 +318,7 @@ class Utility(commands.Cog):
 
     @commands.command(pass_context=True, hidden=True, no_pm=True)
     @commands.has_permissions(administrator=True)
-    async def generate_levels(self, ctx, up_to=None):
+    async def generate_levels(self, ctx, up_to: int = 0):
         embed = nextcord.Embed()
         embed.set_author(
             name=self.__bot.user.name,
@@ -531,16 +382,14 @@ class Utility(commands.Cog):
                         elif player is None and "name" not in member["player"]:
                             name = "UNKNOWN"
                         else:
-                            name = player.name
+                            name = player.name if player is not None else "UNKNOWN"
                         db_player = crud_player.create(
                             session,
                             obj_in=CreatePlayer(
-                                **{
-                                    "discord_id": str(player_discord_id),
-                                    "name": name,
-                                    "hidden": "hidden" in member["player"]
-                                    and member["player"]["hidden"] == 1,
-                                }
+                                discord_id=player_discord_id,
+                                name=name,
+                                hidden="hidden" in member["player"]
+                                and member["player"]["hidden"] == 1,
                             ),
                         )
                     else:
@@ -560,17 +409,15 @@ class Utility(commands.Cog):
                         elif server is None and "name" not in member["server"]:
                             name = "UNKNOWN"
                         else:
-                            name = server.name
+                            name = server.name if server is not None else "UNKNOWN"
 
                         db_server = crud_server.create(
                             session,
                             obj_in=CreateServer(
-                                **{
-                                    "discord_id": str(server_discord_id),
-                                    "name": name,
-                                    "server_exp": 0,
-                                    "channel": member["server"].get("channel"),
-                                }
+                                discord_id=server_discord_id,
+                                name=name,
+                                server_exp=0,
+                                channel=member["server"].get("channel"),
                             ),
                         )
                     else:
@@ -598,11 +445,9 @@ class Utility(commands.Cog):
                             session,
                             crud_level,
                             obj_in=CreateLevel(
-                                **{
-                                    "value": current_level,
-                                    "exp": level_exp(current_level),
-                                    "title": None,
-                                }
+                                value=current_level,
+                                exp=level_exp(current_level),
+                                title=None,
                             ),
                         )
                         level_uuid = db_level.uuid
@@ -613,12 +458,10 @@ class Utility(commands.Cog):
                         db_member = crud_member.create(
                             session,
                             obj_in=CreateMember(
-                                **{
-                                    "exp": exp,
-                                    "player_uuid": db_player.uuid,
-                                    "server_uuid": db_server.uuid,
-                                    "level_uuid": level_uuid,
-                                }
+                                exp=exp,
+                                player_uuid=db_player.uuid,
+                                server_uuid=db_server.uuid,
+                                level_uuid=level_uuid,
                             ),
                         )
                     else:
@@ -656,12 +499,10 @@ class Utility(commands.Cog):
                         session,
                         crud_server,
                         obj_in=CreateServer(
-                            **{
-                                "discord_id": str(ctx.guild.id),
-                                "name": ctx.guild.name,
-                                "server_exp": 0,
-                                "channel": channel_id,
-                            }
+                            discord_id=str(ctx.guild.id),
+                            name=ctx.guild.name,
+                            server_exp=0,
+                            channel=channel_id,
                         ),
                     )
                     if server.channel != channel_id:
@@ -683,12 +524,10 @@ class Utility(commands.Cog):
                         session,
                         crud_server,
                         obj_in=CreateServer(
-                            **{
-                                "discord_id": str(ctx.guild.id),
-                                "name": ctx.guild.name,
-                                "server_exp": 0,
-                                "channel": None,
-                            }
+                            discord_id=str(ctx.guild.id),
+                            name=ctx.guild.name,
+                            server_exp=0,
+                            channel=None,
                         ),
                     )
 
@@ -746,7 +585,7 @@ class Utility(commands.Cog):
         await ctx.send(embed=embed)
 
     @nextcord.slash_command(
-        "top", "Check top N (5) most active users on this server", dm_permission=False
+        "top", "Check top N (5) most active users on this server", contexts=[InteractionContextType.guild]
     )
     async def top(self, ctx, value: int = 5):
         """
@@ -755,7 +594,7 @@ class Utility(commands.Cog):
         :param value: N
         :return:
         """
-        async with ctx.channel.typing():
+        async with _typing_channel(ctx).typing():
             async with session_lock:
                 with Session() as session:
 
@@ -763,12 +602,10 @@ class Utility(commands.Cog):
                         session,
                         crud_server,
                         obj_in=CreateServer(
-                            **{
-                                "discord_id": str(ctx.guild.id),
-                                "name": ctx.guild.name,
-                                "server_exp": 0,
-                                "channel": None,
-                            }
+                            discord_id=str(ctx.guild.id),
+                            name=ctx.guild.name,
+                            server_exp=0,
+                            channel=None,
                         ),
                     )
                     top_5 = crud_member.get_top(session, server.uuid, value)
@@ -804,7 +641,7 @@ class Utility(commands.Cog):
             await ctx.send(embed=embed)
 
     @nextcord.slash_command(
-        "rank", "See your rank on current server.", dm_permission=False
+        "rank", "See your rank on current server.", contexts=[InteractionContextType.guild]
     )
     async def rank(self, ctx: nextcord.Interaction):
         """
@@ -812,7 +649,7 @@ class Utility(commands.Cog):
         :param ctx:
         :return:
         """
-        async with ctx.channel.typing():
+        async with _typing_channel(ctx).typing():
             message = ""
             if ctx.guild is None:
                 message = "Please use this command on a server."
@@ -821,42 +658,8 @@ class Utility(commands.Cog):
                 async with session_lock:
                     with Session() as session:
 
-                        db_server = get_create(
-                            session,
-                            crud_server,
-                            obj_in=CreateServer(
-                                **{
-                                    "discord_id": str(ctx.guild.id),
-                                    "name": ctx.guild.name,
-                                    "server_exp": 0,
-                                    "channel": None,
-                                }
-                            ),
-                        )
-
-                        db_player = get_create(
-                            session,
-                            crud_player,
-                            obj_in=CreatePlayer(
-                                **{
-                                    "discord_id": str(ctx.user.id),
-                                    "name": ctx.user.name,
-                                    "hidden": True,
-                                }
-                            ),
-                        )
-
-                        member = get_create(
-                            session,
-                            crud_member,
-                            obj_in=CreateMember(
-                                **{
-                                    "exp": 0,
-                                    "player_uuid": db_player.uuid,
-                                    "server_uuid": db_server.uuid,
-                                    "level_uuid": None,
-                                }
-                            ),
+                        db_server, _, member = ensure_server_player_member_ctx(
+                            ctx, session
                         )
 
                         if member.level is not None:
@@ -864,17 +667,15 @@ class Utility(commands.Cog):
                                 session,
                                 crud_level,
                                 obj_in=CreateLevel(
-                                    **{
-                                        "value": member.level.value + 1,
-                                        "exp": level_exp(member.level.value + 1),
-                                    }
+                                    value=member.level.value + 1,
+                                    exp=level_exp(member.level.value + 1),
                                 ),
                             )
                         else:
                             next_level = get_create(
                                 session,
                                 crud_level,
-                                obj_in=CreateLevel(**{"value": 1, "exp": level_exp(1)}),
+                                obj_in=CreateLevel(value=1, exp=level_exp(1)),
                             )
 
                         embed = nextcord.Embed()
@@ -909,14 +710,14 @@ class Utility(commands.Cog):
                         #     value=f"`{progress_bar(member.exp, next_level.exp)}`")
 
                         embed.set_image(
-                            url=f"{settings.URL}api/level-image"
-                            f"?name={ctx.user.name}"
+                            url=f"{settings.URL}/level-image"
+                            f"?name={_interaction_user(ctx).name}"
                             f"&level={next_level.value - 1}"
                             f"&current_exp={member.exp}"
                             f"&needed_exp={next_level.exp}"
                         )
 
-            if message != "" and embed is None:
+            if embed is None:
                 await ctx.send(message)
             else:
                 await ctx.send(embed=embed)
@@ -930,18 +731,16 @@ class Utility(commands.Cog):
         :param ctx:
         :return:
         """
-        async with ctx.channel.typing():
+        async with _typing_channel(ctx).typing():
             async with session_lock:
                 with Session() as session:
                     player = get_create(
                         session,
                         crud_player,
                         obj_in=CreatePlayer(
-                            **{
-                                "discord_id": str(ctx.user.id),
-                                "name": ctx.user.name,
-                                "hidden": False,
-                            }
+                            discord_id=str(_interaction_user(ctx).id),
+                            name=_interaction_user(ctx).name,
+                            hidden=False,
                         ),
                     )
 
@@ -977,18 +776,16 @@ class Utility(commands.Cog):
             required=True,
         ),
     ):
-        async with ctx.channel.typing():
+        async with _typing_channel(ctx).typing():
             async with session_lock:
                 with Session() as session:
                     player = get_create(
                         session,
                         crud_player,
                         obj_in=CreatePlayer(
-                            **{
-                                "discord_id": str(ctx.user.id),
-                                "name": ctx.user.name,
-                                "hidden": False,
-                            }
+                            discord_id=str(_interaction_user(ctx).id),
+                            name=_interaction_user(ctx).name,
+                            hidden=False,
                         ),
                     )
 
@@ -1015,18 +812,16 @@ class Utility(commands.Cog):
         :param ctx:
         :return:
         """
-        async with ctx.channel.typing():
+        async with _typing_channel(ctx).typing():
             async with session_lock:
                 with Session() as session:
                     player = get_create(
                         session,
                         crud_player,
                         obj_in=CreatePlayer(
-                            **{
-                                "discord_id": str(ctx.user.id),
-                                "name": ctx.user.name,
-                                "hidden": False,
-                            }
+                            discord_id=str(_interaction_user(ctx).id),
+                            name=_interaction_user(ctx).name,
+                            hidden=False,
                         ),
                     )
 
@@ -1053,18 +848,16 @@ class Utility(commands.Cog):
 
     @unregister.subcommand("steamid", "Remove SteamID")
     async def unregister_steamid(self, ctx: nextcord.Interaction):
-        async with ctx.channel.typing():
+        async with _typing_channel(ctx).typing():
             async with session_lock:
                 with Session() as session:
                     player = get_create(
                         session,
                         crud_player,
                         obj_in=CreatePlayer(
-                            **{
-                                "discord_id": str(ctx.user.id),
-                                "name": ctx.user.name,
-                                "hidden": False,
-                            }
+                            discord_id=str(_interaction_user(ctx).id),
+                            name=_interaction_user(ctx).name,
+                            hidden=False,
                         ),
                     )
 
@@ -1094,7 +887,8 @@ class Utility(commands.Cog):
                 url=settings.URL,
                 icon_url=self.__bot.user.avatar.url,
             )
-            embed.title = "Invalid role command! `!help slash_commands` for more info"
+            embed.title = "Use slash command instead"
+            embed.description = "Legacy text command management is deprecated."
             embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
             await ctx.send(embed=embed)
 
@@ -1111,25 +905,23 @@ class Utility(commands.Cog):
         async with session_lock:
             with Session() as session:
                 db_server = get_create_ctx(ctx, session, crud_server)
-                db_command = core.database.crud.commands.command.get_by_server_and_name(
+                db_command = crud_command.get_by_server_and_name(
                     session, db_server.uuid, command
                 )
                 if db_command is None:
-                    db_command = core.database.crud.commands.command.create(
+                    db_command = crud_command.create(
                         session,
                         obj_in=CreateCommand(
-                            **{
-                                "name": command,
-                                "server_uuid": db_server.uuid,
-                                "status": True,
-                            }
+                            name=command,
+                            server_uuid=db_server.uuid,
+                            status=True,
                         ),
                     )
                 else:
-                    db_command = core.database.crud.commands.command.update(
+                    db_command = crud_command.update(
                         session,
                         db_obj=db_command,
-                        obj_in=UpdateCommand(**{"status": True}),
+                        obj_in=UpdateCommand(status=True),
                     )
 
                 embed.description = (
@@ -1153,25 +945,23 @@ class Utility(commands.Cog):
         async with session_lock:
             with Session() as session:
                 db_server = get_create_ctx(ctx, session, crud_server)
-                db_command = core.database.crud.commands.command.get_by_server_and_name(
+                db_command = crud_command.get_by_server_and_name(
                     session, db_server.uuid, command
                 )
-                if command is None:
-                    db_command = core.database.crud.commands.command.create(
+                if db_command is None:
+                    db_command = crud_command.create(
                         session,
                         obj_in=CreateCommand(
-                            **{
-                                "name": command,
-                                "server_uuid": db_server.uuid,
-                                "status": False,
-                            }
+                            name=command,
+                            server_uuid=db_server.uuid,
+                            status=False,
                         ),
                     )
                 else:
-                    db_command = core.database.crud.commands.command.update(
+                    db_command = crud_command.update(
                         session,
                         db_obj=db_command,
-                        obj_in=UpdateCommand(**{"status": False}),
+                        obj_in=UpdateCommand(status=False),
                     )
 
                 embed.description = (
@@ -1185,18 +975,18 @@ class Utility(commands.Cog):
     @nextcord.slash_command("ip", "Show your public IP")
     async def ip(self, ctx: nextcord.Interaction):
         message = ""
-        async with ctx.channel.typing():
+        async with _typing_channel(ctx).typing():
             embed = nextcord.Embed()
             embed.title = ""
-            embed.url = f"{settings.URL}api/ip"
-            embed.timestamp = datetime.datetime.utcnow()
+            embed.url = f"{settings.URL}/ip"
+            embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
             embed.colour = Colors.success
             embed.set_author(
                 name=self.__bot.user.name,
                 url=settings.URL,
                 icon_url=self.__bot.user.avatar.url,
             )
-            embed.set_image(url=f"{settings.URL}api/ip")
+            embed.set_image(url=f"{settings.URL}/ip")
 
         if message != "" and embed is None:
             await ctx.send(message)

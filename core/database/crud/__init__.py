@@ -72,7 +72,7 @@ class CRUDBase(Generic[ModelType, CreateType, UpdateType]):
         """
         query = select(self.model).offset(skip).limit(limit)
         result = db.execute(query)
-        return result.scalars().all()
+        return list(result.scalars().all())
 
     def create(
             self, db: Session, *, obj_in: CreateType
@@ -83,7 +83,7 @@ class CRUDBase(Generic[ModelType, CreateType, UpdateType]):
         :param obj_in: Pydantic type of the object to create
         :return: Object
         """
-        db_obj = self.model(**obj_in.dict())
+        db_obj = self.model(**obj_in.model_dump())
 
         db.add(db_obj)
         db.commit()
@@ -106,7 +106,7 @@ class CRUDBase(Generic[ModelType, CreateType, UpdateType]):
         if isinstance(obj_in, dict):
             update_data = obj_in
         else:
-            update_data = obj_in.dict(exclude_unset=True)
+            update_data = obj_in.model_dump(exclude_unset=True)
 
         query = update(self.model).where(self.model.uuid == db_obj.uuid). \
             values(**update_data)
@@ -120,7 +120,7 @@ class CRUDBase(Generic[ModelType, CreateType, UpdateType]):
 
     def remove(
             self, db: Session, *, uuid: UUID
-    ) -> ModelType:
+        ) -> Optional[ModelType]:
         """
         Delete object
         :param db: Database Session

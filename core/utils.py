@@ -3,7 +3,6 @@ import datetime
 import nextcord
 
 from typing import Tuple
-from core.config import logger
 
 from enum import Enum
 
@@ -38,8 +37,8 @@ def gets_exp(member):
         return member.status is not nextcord.Status.offline and \
                member.voice is not None and \
                len(member.voice.channel.members) > 1 and \
-               member.voice != nextcord.VoiceState.self_deaf and \
-               member.voice != nextcord.VoiceState.afk
+               not member.voice.self_deaf and \
+               not member.voice.afk
     except AttributeError:
         return False
 

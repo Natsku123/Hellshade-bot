@@ -4,7 +4,7 @@ from core.database.crud import CRUDBase, ModelType
 
 from sqlalchemy.orm import Session
 from sqlalchemy.future import select
-from typing import Optional, List
+from typing import Optional, List, cast
 from uuid import UUID
 
 
@@ -19,7 +19,7 @@ class CRUDRole(CRUDBase[Role, schemas.CreateRole, schemas.UpdateRole]):
 
         query = select(self.model).where(self.model.name == name)
         result = db.execute(query)
-        return result.scalars().first()
+        return cast(Optional[ModelType], result.scalars().first())
 
     def get_multi_by_server_uuid(
             self, db: Session, server_uuid: UUID
@@ -33,10 +33,10 @@ class CRUDRole(CRUDBase[Role, schemas.CreateRole, schemas.UpdateRole]):
 
         query = select(self.model).where(self.model.server_uuid == server_uuid)
         result = db.execute(query)
-        return result.scalars().all()
+        return list(cast(List[ModelType], result.scalars().all()))
 
     def get_multi_by_query(
-            self, db: Session, server_uuid: UUID, q: str = None
+            self, db: Session, server_uuid: UUID, q: str | None = None
     ) -> List[ModelType]:
         """
         Get roles by server_uuid
@@ -52,7 +52,7 @@ class CRUDRole(CRUDBase[Role, schemas.CreateRole, schemas.UpdateRole]):
         else:
             query = select(self.model).where(self.model.server_uuid == server_uuid)
         result = db.execute(query)
-        return result.scalars().all()
+        return list(cast(List[ModelType], result.scalars().all()))
 
 
 class CRUDRoleEmoji(
@@ -71,7 +71,7 @@ class CRUDRoleEmoji(
 
         query = select(self.model).where(self.model.role_uuid == role_uuid)
         result = db.execute(query)
-        return result.scalars().first()
+        return cast(Optional[ModelType], result.scalars().first())
 
     def get_by_identifier(
             self, db: Session, identifier: str
@@ -86,7 +86,7 @@ class CRUDRoleEmoji(
 
         query = select(self.model).where(self.model.identifier == identifier)
         result = db.execute(query)
-        return result.scalars().first()
+        return cast(Optional[ModelType], result.scalars().first())
 
 
 role = CRUDRole(Role)

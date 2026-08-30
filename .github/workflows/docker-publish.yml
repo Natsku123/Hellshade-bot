@@ -21,18 +21,24 @@ env:
 
 
 jobs:
-  eslint:
+  webui-test:
     runs-on: ubuntu-latest
-    name: Frontend Eslint
+    name: Webui Lint & Test
     defaults:
       run:
-        working-directory: ./frontend
+        working-directory: ./webui
     steps:
-      - uses: actions/checkout@v2
-      - name: Install modules
-        run: yarn
+      - uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile --ignore-engines
       - name: Run ESLint
-        run: yarn run eslint "src/**/*.{js,vue}"
+        run: yarn lint
+      - name: Run tests
+        run: yarn test --run
 
   build-bot:
     runs-on: ubuntu-latest
@@ -72,9 +78,10 @@ jobs:
           tags: ${{ steps.metabot.outputs.tags }}
           labels: ${{ steps.metabot.outputs.labels }}
 
-  build-backend:
+  build-webui:
+    needs: [webui-test]
     runs-on: ubuntu-latest
-    name: Build backend Docker image
+    name: Build webui Docker image
     permissions:
       contents: read
       packages: write
@@ -94,57 +101,18 @@ jobs:
           
       # Extract metadata (tags, labels) for Docker
       # https://github.com/docker/metadata-action
-      - name: Extract Docker metadata for backend image
-        id: metabackend
+      - name: Extract Docker metadata for webui image
+        id: metawebui
         uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-webui
 
       # Build and push Docker image with Buildx (don't push on PR)
       # https://github.com/docker/build-push-action
-      - name: Build and push backend image
+      - name: Build and push webui image
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         with:
-          context: ./backend
+          context: ./webui
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.metabackend.outputs.tags }}
-          labels: ${{ steps.metabackend.outputs.labels }}
-
-  build-frontend:
-    needs: [eslint]
-    runs-on: ubuntu-latest
-    name: Build frontend Docker image
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      # Login against a Docker registry except on PR
-      # https://github.com/docker/login-action
-      - name: Log into registry ${{ env.REGISTRY }}
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@28218f9b04b4f3f62068d7b6ce6ca5b26e35336c
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          
-      # Extract metadata (tags, labels) for Docker
-      # https://github.com/docker/metadata-action
-      - name: Extract Docker metadata for frontend image
-        id: metafrontend
-        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend
-
-      # Build and push Docker image with Buildx (don't push on PR)
-      # https://github.com/docker/build-push-action
-      - name: Build and push frontend image
-        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
-        with:
-          context: ./frontend
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.metafrontend.outputs.tags }}
-          labels: ${{ steps.metafrontend.outputs.labels }}
+          tags: ${{ steps.metawebui.outputs.tags }}
+          labels: ${{ steps.metawebui.outputs.labels }}

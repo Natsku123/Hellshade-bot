@@ -216,9 +216,11 @@ class Games(commands.Cog):
                                 ),
                             )
 
-                        if guild.server_uuid:
-                            db_server = crud_server.get(session, guild.server_uuid)
-                        else:
+                        if guild.server_uuid is None:
+                            continue
+
+                        db_server = crud_server.get(session, guild.server_uuid)
+                        if db_server is None:
                             continue
 
                         server: nextcord.Guild | None = self.__bot.get_guild(
@@ -254,25 +256,27 @@ class Games(commands.Cog):
                                 int(member.player.discord_id)
                             )
 
-                            if d_member and server.get_role(guild.role_discord_id):
+                            role_id = int(guild.role_discord_id)
+                            role = server.get_role(role_id)
+                            if d_member and role is not None:
                                 if (
                                     guild.guild_id in guild_ids
-                                    and d_member.get_role(guild.role_discord_id) is None
+                                    and d_member.get_role(role.id) is None
                                 ):
                                     logger.debug(
                                         f"Update guild role for {d_member.name}"
                                     )
-                                    await d_member.add_roles(guild.role_discord_id)
+                                    await d_member.add_roles(role)
                                     updated += 1
                                 elif (
                                     guild.guild_id not in guild_ids
-                                    and d_member.get_role(guild.role_discord_id)
+                                    and d_member.get_role(role.id)
                                     is not None
                                 ):
                                     logger.debug(
                                         f"Update guild role for {d_member.name}"
                                     )
-                                    await d_member.remove_roles(guild.role_discord_id)
+                                    await d_member.remove_roles(role)
                                     updated += 1
                             elif d_member:
                                 logger.error(
@@ -335,7 +339,8 @@ class Games(commands.Cog):
                 sub = crud_subscription.create(
                     session,
                     obj_in=CreateSubscription(
-                        **{"channel_id": str(ctx.message.channel.id), "app_id": app_id}
+                        channel_id=str(ctx.message.channel.id),
+                        app_id=app_id,
                     ),
                 )
                 embed = nextcord.Embed()
@@ -365,7 +370,8 @@ class Games(commands.Cog):
                 )
                 for s in subs:
                     old_s = crud_subscription.remove(session, uuid=s.uuid)
-                    apps.append(old_s.app_id)
+                    if old_s is not None:
+                        apps.append(old_s.app_id)
 
                 embed = nextcord.Embed()
                 embed.set_author(
@@ -422,7 +428,21 @@ class Games(commands.Cog):
 
     @slash_dota.subcommand("random", "Get a truly random Dota 2 hero!")
     async def slash_dota_random(self, ctx):
-        index = random.randint(0, len(self.__heroes))
+        if not self.__heroes:
+            embed = nextcord.Embed()
+            embed.title = "You randomed..."
+            embed.description = "No Dota heroes are currently available."
+            embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
+            embed.colour = 8161513
+            embed.set_author(
+                name=self.__bot.user.name,
+                url=settings.URL,
+                icon_url=self.__bot.user.avatar.url,
+            )
+            await ctx.send(embed=embed)
+            return
+
+        index = random.randint(0, len(self.__heroes) - 1)
         hero = self.__heroes[index]
         hero_name = hero["name"]
         hero_image = hero["link"]
@@ -483,6 +503,10 @@ class Games(commands.Cog):
         :param role: Role to be linked
         :return:
         """
+        if ctx.guild is None:
+            await ctx.send("This command can only be used in a server.", ephemeral=True)
+            return
+
         embed = nextcord.Embed()
         embed.set_author(
             name=self.__bot.user.name,
@@ -496,12 +520,10 @@ class Games(commands.Cog):
                     session,
                     crud_server,
                     obj_in=CreateServer(
-                        **{
-                            "discord_id": str(ctx.guild.id),
-                            "name": ctx.guild.name,
-                            "server_exp": 0,
-                            "channel": None,
-                        }
+                        discord_id=str(ctx.guild.id),
+                        name=ctx.guild.name,
+                        server_exp=0,
+                        channel=None,
                     ),
                 )
                 guild = crud_dg.get_by_guild_id_server_uuid(
@@ -536,14 +558,12 @@ class Games(commands.Cog):
                                         guild = crud_dg.create(
                                             session,
                                             obj_in=CreateDotaGuild(
-                                                **{
-                                                    "role_discord_id": str(role.id),
-                                                    "name": data["summary"][
-                                                        "guild_info"
-                                                    ]["guild_name"],
-                                                    "server_uuid": db_server.uuid,
-                                                    "guild_id": guild_id,
-                                                }
+                                                role_discord_id=str(role.id),
+                                                name=data["summary"][
+                                                    "guild_info"
+                                                ]["guild_name"],
+                                                server_uuid=db_server.uuid,
+                                                guild_id=guild_id,
                                             ),
                                         )
 
@@ -569,6 +589,10 @@ class Games(commands.Cog):
         :param ctx: Context
         :return:
         """
+        if ctx.guild is None:
+            await ctx.send("This command can only be used in a server.", ephemeral=True)
+            return
+
         embed = nextcord.Embed()
         embed.set_author(
             name=self.__bot.user.name,
@@ -582,12 +606,10 @@ class Games(commands.Cog):
                     session,
                     crud_server,
                     obj_in=CreateServer(
-                        **{
-                            "discord_id": str(ctx.guild.id),
-                            "name": ctx.guild.name,
-                            "server_exp": 0,
-                            "channel": None,
-                        }
+                        discord_id=str(ctx.guild.id),
+                        name=ctx.guild.name,
+                        server_exp=0,
+                        channel=None,
                     ),
                 )
                 guilds = crud_dg.get_multi_by_server_uuid(session, db_server.uuid)
@@ -601,7 +623,7 @@ class Games(commands.Cog):
                             embed.description = (
                                 f"{guild_summary.guild_info.guild_description}\n"
                                 f"MOTD: **{guild_summary.guild_info.guild_motd}**\n"
-                                f"Created: **{guild_summary.guild_info.created_timestamp.isoformat()}**"
+                                f"Created: <t:{guild_summary.guild_info.created_timestamp.timestamp():.0f}:f>"
                             )
 
                         else:
@@ -632,69 +654,67 @@ class Games(commands.Cog):
 
             else:
                 try:
-                    if type(timeout) == str:
+                    if isinstance(timeout, str):
+                        timeout_text = timeout
                         if (
-                            "h" not in timeout
-                            and "min" not in timeout
-                            and "s" not in timeout
+                            "h" not in timeout_text
+                            and "min" not in timeout_text
+                            and "s" not in timeout_text
                         ):
-                            timeout = float(timeout)
+                            timeout = float(timeout_text)
                         else:
                             raise ValueError
+                    elif isinstance(timeout, (int, float)):
+                        timeout = float(timeout)
+                    else:
+                        raise ValueError
                 except ValueError:
                     try:
-                        timeout = str(timeout)
-                        if "h" in timeout and "min" in timeout and "s" in timeout:
-                            timeout = timeout.split(":")
-                            if len(timeout) == 3:
-                                timeout[0] = float(timeout[0].strip("h"))
-                                timeout[1] = float(timeout[1].strip("min"))
-                                timeout[2] = float(timeout[2].strip("s"))
-                                timeout = (
-                                    timeout[0] * 60 * 60 + timeout[1] * 60 + timeout[2]
-                                )
-                        elif "h" in timeout and "min" in timeout and "s" not in timeout:
-                            timeout = timeout.split(":")
-                            if len(timeout) == 2:
-                                timeout[0] = float(timeout[0].strip("h"))
-                                timeout[1] = float(timeout[1].strip("min"))
-                                timeout = timeout[0] * 60 * 60 + timeout[1] * 60
-                        elif "h" in timeout and "s" in timeout and "min" not in timeout:
-                            timeout = timeout.split(":")
-                            if len(timeout) == 2:
-                                timeout[0] = float(timeout[0].strip("h"))
-                                timeout[1] = float(timeout[1].strip("s"))
-                                timeout = timeout[0] * 60 * 60 + timeout[1]
-                        elif "min" in timeout and "s" in timeout and "h" not in timeout:
-                            timeout = timeout.split(":")
-                            if len(timeout) == 2:
-                                timeout[0] = float(timeout[0].strip("min"))
-                                timeout[1] = float(timeout[1].strip("s"))
-                                timeout = timeout[0] * 60 + timeout[1]
-                        elif (
-                            "h" in timeout
-                            and "min" not in timeout
-                            and "s" not in timeout
-                        ):
-                            timeout = timeout.strip("h")
-                            timeout = float(timeout) * 60 * 60
-                        elif (
-                            "min" in timeout
-                            and "h" not in timeout
-                            and "s" not in timeout
-                        ):
-                            timeout = timeout.strip("min")
-                            timeout = float(timeout) * 60
-                        elif (
-                            "s" in timeout
-                            and "h" not in timeout
-                            and "min" not in timeout
-                        ):
-                            timeout = float(timeout.strip("s"))
+                        timeout_text = str(timeout)
+                        if "h" in timeout_text and "min" in timeout_text and "s" in timeout_text:
+                            parts = timeout_text.split(":")
+                            if len(parts) == 3:
+                                hours = float(parts[0].strip("h"))
+                                minutes = float(parts[1].strip("min"))
+                                seconds = float(parts[2].strip("s"))
+                                timeout = hours * 60 * 60 + minutes * 60 + seconds
+                            else:
+                                raise ValueError
+                        elif "h" in timeout_text and "min" in timeout_text and "s" not in timeout_text:
+                            parts = timeout_text.split(":")
+                            if len(parts) == 2:
+                                hours = float(parts[0].strip("h"))
+                                minutes = float(parts[1].strip("min"))
+                                timeout = hours * 60 * 60 + minutes * 60
+                            else:
+                                raise ValueError
+                        elif "h" in timeout_text and "s" in timeout_text and "min" not in timeout_text:
+                            parts = timeout_text.split(":")
+                            if len(parts) == 2:
+                                hours = float(parts[0].strip("h"))
+                                seconds = float(parts[1].strip("s"))
+                                timeout = hours * 60 * 60 + seconds
+                            else:
+                                raise ValueError
+                        elif "min" in timeout_text and "s" in timeout_text and "h" not in timeout_text:
+                            parts = timeout_text.split(":")
+                            if len(parts) == 2:
+                                minutes = float(parts[0].strip("min"))
+                                seconds = float(parts[1].strip("s"))
+                                timeout = minutes * 60 + seconds
+                            else:
+                                raise ValueError
+                        elif "h" in timeout_text and "min" not in timeout_text and "s" not in timeout_text:
+                            timeout = float(timeout_text.strip("h")) * 60 * 60
+                        elif "min" in timeout_text and "h" not in timeout_text and "s" not in timeout_text:
+                            timeout = float(timeout_text.strip("min")) * 60
+                        elif "s" in timeout_text and "h" not in timeout_text and "min" not in timeout_text:
+                            timeout = float(timeout_text.strip("s"))
                         else:
                             raise ValueError
                     except ValueError:
                         await ctx.send("Invalid timeout value.")
+                        return
             if delay > 0:
                 await ctx.send("Invitation added to queue.")
 
@@ -801,4 +821,4 @@ class Games(commands.Cog):
                         squad_text += str(player) + "(" + str(value) + ")" + lnb
                 await ctx.send("Times up! Squad status: ``` {0} ```".format(squad_text))
         except ValueError:
-            await ctx.send("Number of players must be int! Not " + type(players))
+            await ctx.send(f"Number of players must be int! Not {type(players).__name__}")

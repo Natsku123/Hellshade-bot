@@ -1,0 +1,45 @@
+[project]
+name = "hellshade-bot"
+version = "0.1.0"
+description = "A Discord bot for Hellshade and friends"
+readme = "README.md"
+authors = [
+    { name = "Max Mecklin", email = "max@meckl.in" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "alembic",
+    "asyncpg",
+    "beautifulsoup4",
+    "bs4",
+    "chardet",
+    "graphene>=3.4.3",
+    "graphene-sqlalchemy==3.0.0rc2",
+    "nextcord[speed]",
+    "psycopg2-binary",
+    "pydantic",
+    "pydantic-settings",
+    "requests",
+    "sqlalchemy",
+]
+
+[tool.uv.workspace]
+members = [
+    "core",
+]
+
+[dependency-groups]
+dev = [
+    "coverage>=7.10.0",
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.2.1",
+    "ruff>=0.15.21",
+    "ty>=0.0.58",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "live: marks tests that require real Discord integration",
+]
+
