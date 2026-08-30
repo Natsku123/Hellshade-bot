@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getDb } from "@/lib/db";
-import { AppError, logError, toApiError } from "@/lib/errors";
+import { logError, toApiError } from "@/lib/errors";
 import { parsePaginationParams, getOffset, buildPaginatedResponse } from "@/lib/pagination";
 import { getReadOnlyHeaders } from "@/lib/readonly";
 import type { ServerSummary } from "@/lib/types";

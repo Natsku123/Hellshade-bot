@@ -51,9 +51,11 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
               <div className="text-xs text-muted-foreground">
                 <details className="cursor-pointer">
                   <summary>Error details</summary>
-                  <pre className="mt-2 overflow-auto rounded bg-muted p-2 text-xs">
-                    {this.state.error.stack}
-                  </pre>
+                  {process.env.NODE_ENV !== "production" ? (
+                    <pre className="mt-2 overflow-auto rounded bg-muted p-2 text-xs">
+                      {this.state.error.stack}
+                    </pre>
+                  ) : null}
                 </details>
               </div>
               <Button onClick={this.retry} size="sm">

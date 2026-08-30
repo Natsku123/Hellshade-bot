@@ -25,10 +25,20 @@ const globalForPg = globalThis as unknown as {
 };
 
 export const getDb = (): Pool => {
-  if (!connectionString || connectionString === "postgresql://:@localhost/") {
+  if (!connectionString) {
     throw new Error(
       "Database connection is not configured. Set DATABASE_URL or DB_HOST/DB_USER/DB_PASS/DB_NAME.",
     );
+  }
+
+  if (!process.env.DATABASE_URL && !process.env.DB_URL && !process.env.NEXT_DATABASE_URL) {
+    const user = process.env.DB_USER;
+    const name = process.env.DB_NAME;
+    if (!user || !name) {
+      throw new Error(
+        "Database connection is not configured. Set DATABASE_URL or DB_HOST/DB_USER/DB_PASS/DB_NAME.",
+      );
+    }
   }
 
   if (!globalForPg.pgPool) {

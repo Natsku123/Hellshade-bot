@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # Ensure that database is up to date
 uv run alembic upgrade head
 

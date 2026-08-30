@@ -25,8 +25,10 @@ export default function ServerDetailPage() {
       return;
     }
 
+    const controller = new AbortController();
+
     // Fetch server details
-    fetch(`/api/servers/${params.id}`)
+    fetch(`/api/servers/${params.id}`, { signal: controller.signal })
       .then((res) => {
         if (!res.ok) {
           throw new Error(`Request failed with ${res.status}`);
@@ -35,14 +37,20 @@ export default function ServerDetailPage() {
       })
       .then((data) => setServer(data))
       .catch((err: unknown) => {
+        if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Unknown error");
       });
 
     // Fetch levels with pagination (first 500 should be enough for most cases)
-    fetch("/api/levels?page=1&limit=500")
+    fetch("/api/levels?page=1&limit=500", { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : { data: [] }))
       .then((data: LevelsResponse) => setLevels(data.data ?? []))
-      .catch(() => setLevels([]));
+      .catch((err: unknown) => {
+        if (err instanceof Error && err.name === "AbortError") return;
+        setLevels([]);
+      });
+
+    return () => controller.abort();
   }, [params.id]);
 
   const nextLevelFor = (value: number) =>

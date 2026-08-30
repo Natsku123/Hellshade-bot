@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING
+from datetime import datetime
+from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
 from sqlalchemy import DateTime, Integer, String
@@ -20,10 +21,10 @@ class Server(Base):
     uuid: Mapped[UUID] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
     discord_id: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
-    server_exp: Mapped[int] = mapped_column(Integer, nullable=True)
-    channel: Mapped[str] = mapped_column(String, nullable=True)
-    role_channel: Mapped[str] = mapped_column(String, nullable=True)
-    role_message: Mapped[str] = mapped_column(String, nullable=True)
-    last_seen: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
+    server_exp: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    channel: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    role_channel: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    role_message: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    last_seen: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     members: Mapped[list["Member"]] = relationship("Member", back_populates="server")

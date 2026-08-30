@@ -26,10 +26,11 @@ export default function ServersPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const controller = new AbortController();
     // Reset loading before each fetch; intentional, safe cascading re-render.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
-    fetch(`/api/servers?page=${page}&limit=${limit}`)
+    fetch(`/api/servers?page=${page}&limit=${limit}`, { signal: controller.signal })
       .then((res) => {
         if (!res.ok) {
           throw new Error(`Request failed with ${res.status}`);
@@ -41,9 +42,13 @@ export default function ServersPage() {
         setTotal(data.total);
       })
       .catch((err: unknown) => {
+        if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Unknown error");
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
   }, [page, limit]);
 
   const totalPages = Math.ceil(total / limit);

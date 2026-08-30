@@ -18,6 +18,6 @@ export function getReadOnlyHeaders(): HeadersInit {
     "X-Frame-Options": "DENY",
     "X-XSS-Protection": "1; mode=block",
     "Pragma": "no-cache",
-    "Cache-Control": "public, max-age=60, must-revalidate",
+    "Cache-Control": "private, max-age=60, must-revalidate",
   };
 }
