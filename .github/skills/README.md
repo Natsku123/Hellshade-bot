@@ -12,6 +12,10 @@ Use this index to choose the correct workflow skill quickly.
   - File: `./docker-runtime-debug/SKILL.md`
   - Use for: health checks, db readiness, Traefik diagnostics, and log triage.
 
+- `alembic-revision`
+  - File: `./alembic-revision/SKILL.md`
+  - Use for: generating and reviewing Alembic schema revisions from model changes.
+
 ## Frontend Package Management
 
 - `yarn-frontend-manager`
@@ -42,6 +46,7 @@ Use this index to choose the correct workflow skill quickly.
 
 - Need to run containers normally: `docker-compose-ops`
 - Need to debug container behavior: `docker-runtime-debug`
+- Need to create a database schema migration: `alembic-revision`
 - Need frontend package commands: `yarn-frontend-manager`
 - Need low-risk dependency upkeep: `dependency-upgrade-safe`
 - Need breaking dependency upgrades: `dependency-upgrade-major`
