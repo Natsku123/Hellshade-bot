@@ -6,6 +6,16 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from core.database.models import Base
+import core.database.models.commands  # noqa: F401
+import core.database.models.dota_guild  # noqa: F401
+import core.database.models.gw2_tp_order  # noqa: F401
+import core.database.models.levels  # noqa: F401
+import core.database.models.members  # noqa: F401
+import core.database.models.players  # noqa: F401
+import core.database.models.roles  # noqa: F401
+import core.database.models.servers  # noqa: F401
+import core.database.models.steamnews  # noqa: F401
+import core.database.models.users  # noqa: F401
 from core.config import settings
 
 from alembic import context
