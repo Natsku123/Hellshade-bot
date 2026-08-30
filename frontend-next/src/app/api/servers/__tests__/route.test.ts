@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { NextRequest } from "next/server";
+
 import { GET as getServers } from "@/app/api/servers/route";
 
 // Mock the database
@@ -30,7 +32,7 @@ describe("GET /api/servers", () => {
       query: mockQuery,
     } as any);
 
-    const request = new Request("http://localhost:3000/api/servers?page=1&limit=50");
+    const request = new NextRequest("http://localhost:3000/api/servers?page=1&limit=50");
     const response = await getServers(request);
     const data = await response.json();
 
@@ -49,7 +51,7 @@ describe("GET /api/servers", () => {
       query: mockQuery,
     } as any);
 
-    const request = new Request("http://localhost:3000/api/servers?page=1&limit=50");
+    const request = new NextRequest("http://localhost:3000/api/servers?page=1&limit=50");
     const response = await getServers(request);
 
     expect(response.status).toBe(500);
@@ -68,7 +70,7 @@ describe("GET /api/servers", () => {
     } as any);
 
     // Test with invalid page (should default to 1)
-    const request = new Request("http://localhost:3000/api/servers?page=invalid&limit=50");
+    const request = new NextRequest("http://localhost:3000/api/servers?page=invalid&limit=50");
     const response = await getServers(request);
     const data = await response.json();
 

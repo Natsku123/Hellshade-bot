@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Github,
+  GitFork,
   Home,
   Info,
   Menu,
@@ -54,7 +54,7 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
         rel="noreferrer"
         className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
       >
-        <Github className="size-4" />
+        <GitFork className="size-4" />
         Github
       </a>
     </nav>

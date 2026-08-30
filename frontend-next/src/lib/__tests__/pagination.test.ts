@@ -44,7 +44,7 @@ describe("Pagination Utilities", () => {
   it("should indicate no more pages when at end", () => {
     const data = [{ id: 1 }];
     const response = buildPaginatedResponse(data, 2, 50, 100);
-    expect(response.hasMore).toBe(true);
+    expect(response.hasMore).toBe(false);
 
     const lastPage = buildPaginatedResponse(data, 2, 50, 75);
     expect(lastPage.hasMore).toBe(false);
