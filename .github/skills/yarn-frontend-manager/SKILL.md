@@ -23,7 +23,12 @@ argument-hint: '[action: install|dev|build|lint|outdated|upgrade-safe|upgrade-in
 - `install`: install dependencies (`--ignore-engines`).
 - `dev`: run local dev command.
 - `build`: run production build command.
-- `lint`: run lint command.
+- `lint`: run ESLint linting.
+- `type-check`: run TypeScript compiler in check-only mode (`tsc --noEmit`).
+- `test`: run Vitest unit tests.
+- `test:ui`: run Vitest with interactive UI.
+- `test:coverage`: run Vitest with coverage report.
+- `audit`: check for security vulnerabilities in dependencies.
 - `outdated`: inspect outdated dependencies.
 - `upgrade-safe`: update lockfile within existing semver ranges.
 - `upgrade-interactive`: interactive upgrade workflow for broader updates.
@@ -32,7 +37,11 @@ argument-hint: '[action: install|dev|build|lint|outdated|upgrade-safe|upgrade-in
 ## Command
 ```bash
 bash .github/skills/yarn-frontend-manager/scripts/yarn_frontend.sh install
+bash .github/skills/yarn-frontend-manager/scripts/yarn_frontend.sh dev
 bash .github/skills/yarn-frontend-manager/scripts/yarn_frontend.sh lint
+bash .github/skills/yarn-frontend-manager/scripts/yarn_frontend.sh type-check
+bash .github/skills/yarn-frontend-manager/scripts/yarn_frontend.sh test
+bash .github/skills/yarn-frontend-manager/scripts/yarn_frontend.sh audit
 bash .github/skills/yarn-frontend-manager/scripts/yarn_frontend.sh upgrade-safe
 ```
 

@@ -29,6 +29,20 @@ argument-hint: '[scope: python|frontend|containers|all] [phase: plan|apply] [--v
 - `containers`: base image and compose image surface checks.
 - `all`: run scopes sequentially with checkpoints.
 
+### Container Base Image Upgrades
+When using the `containers` scope, the skill pulls and rebuilds container images. However, **base image version upgrades** (e.g., `python:3.13` → `python:3.14` or `node:24` → `node:25`) must be performed manually in the Dockerfiles:
+
+**Files to update:**
+- `Dockerfile`: Python base image (currently `python:3.13-slim-trixie`)
+- `webui/Dockerfile`: Node.js base images (currently `node:24-alpine` in all three stages)
+
+**Recommended process:**
+1. Check latest base image versions (e.g., `python.org`, `nodejs.org`)
+2. Edit Dockerfile base tags to target versions
+3. Run `containers plan` to review before applying
+4. Run `containers apply` to pull and rebuild with new base images
+5. Run `--verify` flag to validate compatibility (tests, lint, health checks)
+
 ## Command
 ```bash
 bash .github/skills/dependency-upgrade-major/scripts/upgrade_major.sh all plan
@@ -45,3 +59,4 @@ bash .github/skills/dependency-upgrade-major/scripts/upgrade_major.sh all apply 
 - Use unsandboxed execution with network enabled when metadata/changelog fetches are blocked.
 - Apply upgrades in limited batches and stop on the first failing checkpoint.
 - Report blockers and migration steps before continuing to the next batch.
+- **For `containers` scope**: Manually update Dockerfile base tags before running the skill. The skill validates and rebuilds, but does not edit Dockerfile tags automatically.

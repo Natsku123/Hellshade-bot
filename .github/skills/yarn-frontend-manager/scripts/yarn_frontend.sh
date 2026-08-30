@@ -12,6 +12,11 @@ Actions (run in webui/):
   dev
   build
   lint
+  type-check
+  test
+  test:ui
+  test:coverage
+  audit
   outdated
   upgrade-safe
   upgrade-interactive
@@ -48,6 +53,21 @@ case "$action" in
     ;;
   lint)
     yarn lint
+    ;;
+  type-check)
+    npx tsc --noEmit
+    ;;
+  test)
+    yarn test
+    ;;
+  test:ui)
+    yarn test:ui
+    ;;
+  test:coverage)
+    yarn test:coverage
+    ;;
+  audit)
+    yarn audit || true
     ;;
   outdated)
     yarn outdated || true
