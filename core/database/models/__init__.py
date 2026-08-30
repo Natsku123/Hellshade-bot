@@ -15,6 +15,7 @@ _MODEL_EXPORTS = {
     "Post": "core.database.models.steamnews",
     "Command": "core.database.models.commands",
     "DotaGuild": "core.database.models.dota_guild",
+    "Gw2TPOrder": "core.database.models.gw2_tp_order",
 }
 
 __all__ = [
@@ -30,6 +31,7 @@ __all__ = [
     "Post",
     "Command",
     "DotaGuild",
+    "Gw2TPOrder",
 ]
 
 
