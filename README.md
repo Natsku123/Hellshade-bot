@@ -105,3 +105,66 @@ can be overridden by running the command again.
 
 Usage:
 `!role init`
+
+## Migration from `origin/main`
+
+This branch replaces the legacy Vue dashboard and FastAPI/GraphQL backend with
+the Next.js dashboard in `webui/`. It also moves the bot runtime from the
+requirements-based workflow to Python 3.13 and `uv`.
+
+### Before deploying
+
+1. Install Docker Compose and, for local development, Python 3.13 with `uv`
+	and Yarn.
+2. Remove any deployment references to the deleted `frontend/` and `backend/`
+	applications. The replacement dashboard is the `webui` service and source
+	directory.
+3. Replace GraphQL reads used by the old dashboard with these HTTP endpoints:
+	`GET /api/health`, `GET /api/servers`, `GET /api/servers/:id`, and
+	`GET /api/levels`.
+4. Set the environment values used by Compose: `TOKEN`, `OWNER`, `ADMINS`,
+	`DB_NAME`, `DB_USER`, and `DB_PASS`. The Web UI receives its database
+	connection through the `DB_*` values. When running it outside Compose, use
+	either `DATABASE_URL` or `DB_HOST`, `DB_USER`, `DB_PASS`, and `DB_NAME` in
+	`webui/.env.local`.
+
+### Database migration
+
+The bot container runs `uv run alembic upgrade head` on startup, so existing
+Alembic revisions apply automatically. This branch also adds the
+`gw2_tp_orders` model, but does not include its Alembic revision. Create and
+review that revision before deploying the model to a database:
+
+```bash
+docker compose run --rm bot uv run alembic revision --autogenerate -m "add gw2 tp orders"
+docker compose run --rm bot uv run alembic upgrade head
+```
+
+Commit the generated revision with the deployment change. Do not rely on
+autogeneration against a production database without reviewing the SQL.
+
+### Start and verify
+
+Build and start the replacement stack from the repository root:
+
+```bash
+docker compose up --build -d
+```
+
+The Web UI is available directly on `http://localhost:3000`; the stack also
+includes Traefik for HTTP routing. For local Web UI development, run:
+
+```bash
+yarn --cwd webui install --ignore-engines
+yarn --cwd webui dev
+```
+
+Validate the migration with:
+
+```bash
+docker compose ps
+curl --fail http://localhost:3000/api/health
+uv run pytest
+yarn --cwd webui lint
+yarn --cwd webui test
+```
