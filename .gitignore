@@ -4,6 +4,7 @@ data.back/
 files/
 *.json
 !package.json
+!webui/tsconfig.json
 venv/
 .idea/
 .yarn/
