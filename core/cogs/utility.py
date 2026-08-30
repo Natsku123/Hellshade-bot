@@ -710,7 +710,7 @@ class Utility(commands.Cog):
                         #     value=f"`{progress_bar(member.exp, next_level.exp)}`")
 
                         embed.set_image(
-                            url=f"{settings.URL}api/level-image"
+                            url=f"{settings.URL}/level-image"
                             f"?name={_interaction_user(ctx).name}"
                             f"&level={next_level.value - 1}"
                             f"&current_exp={member.exp}"
@@ -978,7 +978,7 @@ class Utility(commands.Cog):
         async with _typing_channel(ctx).typing():
             embed = nextcord.Embed()
             embed.title = ""
-            embed.url = f"{settings.URL}api/ip"
+            embed.url = f"{settings.URL}/ip"
             embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
             embed.colour = Colors.success
             embed.set_author(
@@ -986,7 +986,7 @@ class Utility(commands.Cog):
                 url=settings.URL,
                 icon_url=self.__bot.user.avatar.url,
             )
-            embed.set_image(url=f"{settings.URL}api/ip")
+            embed.set_image(url=f"{settings.URL}/ip")
 
         if message != "" and embed is None:
             await ctx.send(message)

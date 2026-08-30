@@ -3,6 +3,7 @@ import json
 from types import SimpleNamespace
 from uuid import UUID
 
+from core.config import settings
 from core.database import Session
 from core.database.crud.dota_guild import dota_guild as crud_dg
 from core.database.crud.members import member as crud_member
@@ -74,6 +75,8 @@ def test_utility_ip_command_dispatches_through_fake_interaction(utility_cog, int
     embed = interaction.sent_messages[-1]["args"][0]
     assert embed is not None
     assert embed.title == ""
+    assert embed.url == f"{settings.URL}/ip"
+    assert embed.image.url == f"{settings.URL}/ip"
 
 
 def test_games_dota_command_dispatches_through_fake_interaction(games_cog, interaction_factory):
