@@ -5,16 +5,10 @@ LABEL maintainer="Max Mecklin <max@meckl.in>"
 
 WORKDIR /bot
 
-# Install dependencies
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --locked --no-install-project
-
 ADD . /bot
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --compile-bytecode
+    uv sync --frozen --compile-bytecode
 
 ENV PYTHONPATH="${PYTHONPATH}:/bot"
 
