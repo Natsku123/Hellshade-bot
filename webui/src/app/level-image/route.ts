@@ -24,8 +24,16 @@ export async function GET(request: Request) {
   const currentExp = parseInteger(searchParams.get("current_exp"), 0);
   const neededExp = parseInteger(searchParams.get("needed_exp"), 1000);
   const level = parseInteger(searchParams.get("level"), 0);
-  const icon = searchParams.get("icon");
-  const progress = neededExp === 0 ? 0 : Math.min(currentExp / neededExp, 1);
+  const icon = (() => {
+    const raw = searchParams.get("icon");
+    if (!raw) return null;
+    try {
+      const url = new URL(raw);
+      return url.protocol === "https:" ? url.toString() : null;
+    } catch {
+      return null;
+    }
+  })();
   const percentage = `${(progress * 100).toFixed(2)}%`;
   const markerCenter = 15 + progress * 550;
 
